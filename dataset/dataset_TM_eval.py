@@ -1,3 +1,4 @@
+import os 
 import torch
 from torch.utils import data
 import numpy as np
@@ -17,8 +18,7 @@ def collate_fn(batch):
 
 '''For use of training text-2-motion generative model'''
 class Text2MotionDataset(data.Dataset):
-    def __init__(self, dataset_name, is_test, w_vectorizer, feat_bias = 5, max_text_len = 20, unit_length = 4, mode = "eval"):
-        
+    def __init__(self, dataset_name, is_test, w_vectorizer, feat_bias = 5, max_text_len = 20, unit_length = 4, mode = "eval",data_root=None):
         self.max_length = 20
         self.pointer = 0
         self.dataset_name = dataset_name
@@ -40,6 +40,11 @@ class Text2MotionDataset(data.Dataset):
         
         elif dataset_name == 'mcs':
             self.data_root = '/home/ubuntu/data/HumanML3D' + "/" + mode
+            
+            if not os.path.isdir(self.data_root) and data_root is not None: 
+                self.data_root = pjoin(data_root,mode)  
+
+
             self.motion_dir = pjoin(self.data_root, 'new_joints_vecs')
             self.text_dir = pjoin(self.data_root, 'texts')
             self.joints_num = 22
@@ -49,6 +54,8 @@ class Text2MotionDataset(data.Dataset):
             dim_pose = 263
             kinematic_chain = paramUtil.t2m_kinematic_chain
             self.meta_dir = '/home/ubuntu/data/HumanML3D'
+            if not os.path.isdir(self.meta_dir) and data_root is not None: 
+                self.meta_dir = data_root
 
         elif dataset_name == 'kit':
             self.data_root = './dataset/KIT-ML'
@@ -226,9 +233,9 @@ class Text2MotionDataset(data.Dataset):
 
 def DATALoader(dataset_name, is_test,
                 batch_size, w_vectorizer,
-                num_workers = 8, unit_length = 4) : 
+                num_workers = 8, unit_length = 4,data_root=None) : 
     
-    val_loader = torch.utils.data.DataLoader(Text2MotionDataset(dataset_name, is_test, w_vectorizer, unit_length=unit_length),
+    val_loader = torch.utils.data.DataLoader(Text2MotionDataset(dataset_name, is_test, w_vectorizer, unit_length=unit_length,data_root=data_root),
                                               batch_size,
                                               shuffle = True,
                                               num_workers=num_workers,

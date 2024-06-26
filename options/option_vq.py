@@ -56,6 +56,7 @@ def get_args_parser():
     
     parser.add_argument('--vis-gt', action='store_true', help='whether visualize GT motions')
     parser.add_argument('--nb-vis', default=20, type=int, help='nb of visualizations')
+    parser.add_argument('--data_root', default='/home/ubuntu/data/HumanML3D', type=str, help='Directory where the training and evaluation data strored in HumanML3D format')
     
     
     return parser.parse_args()
