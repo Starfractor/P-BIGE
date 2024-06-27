@@ -1,0 +1,147 @@
+import os
+import json
+from tqdm import tqdm
+
+import torch
+import random
+from torch.utils.tensorboard import SummaryWriter
+import numpy as np
+import models.vqvae as vqvae
+import options.option_limo as option_limo
+import utils.utils_model as utils_model
+from dataset import dataset_TM_eval
+import utils.eval_trans as eval_trans
+from options.get_eval_option import get_opt
+from models.evaluator_wrapper import EvaluatorModelWrapper
+import warnings
+warnings.filterwarnings('ignore')
+import numpy as np
+
+from classifiers import get_classifier
+
+
+##### ---- Exp dirs ---- #####
+args = option_limo.get_args_parser()
+torch.manual_seed(args.seed)
+
+random.seed(args.seed)
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
+torch.cuda.manual_seed_all(args.seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark=False
+
+
+args.out_dir = os.path.join(args.out_dir, f'{args.exp_name}')
+os.makedirs(args.out_dir, exist_ok = True)
+
+##### ---- Logger ---- #####
+logger = utils_model.get_logger(args.out_dir)
+writer = SummaryWriter(args.out_dir)
+logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
+
+
+from utils.word_vectorizer import WordVectorizer
+w_vectorizer = WordVectorizer('./glove', 'our_vab')
+
+
+dataset_opt_path = 'checkpoints/kit/Comp_v6_KLD005/opt.txt' if args.dataname == 'kit' else 'checkpoints/t2m/Comp_v6_KLD005/opt.txt'
+
+wrapper_opt = get_opt(dataset_opt_path, torch.device('cuda'))
+eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
+
+
+##### ---- Dataloader ---- #####
+args.nb_joints = 21 if args.dataname == 'kit' else 22
+
+val_loader = dataset_TM_eval.DATALoader(args.dataname, True, 32, w_vectorizer, unit_length=2**args.down_t,data_root=args.data_root)
+
+##### ---- Device ---- #####
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+##### ---- Network ---- #####
+net = vqvae.HumanVQVAE(args, ## use args to define different parameters in different quantizers
+                       args.nb_code,
+                       args.code_dim,
+                       args.output_emb_width,
+                       args.down_t,
+                       args.stride_t,
+                       args.width,
+                       args.depth,
+                       args.dilation_growth_rate,
+                       args.vq_act,
+                       args.vq_norm)
+
+if args.resume_pth : 
+    logger.info('loading checkpoint from {}'.format(args.resume_pth))
+    ckpt = torch.load(args.resume_pth, map_location='cpu')
+    net.load_state_dict(ckpt['net'], strict=True)
+# net.train()
+net.eval()
+net.cuda()
+
+
+# Load Classifier 
+classifier = get_classifier(os.path.join(args.data_root,'classifier.pt'))
+
+# Test classifier: 
+# for batch in val_loader:
+#     word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, token, name = batch
+#     B,T,D = motion.shape 
+#     classifier_window = 64
+
+#     # assert T % classifier_window == 0, "Sequence length should be divisible by classifier window size"
+
+#     T = (T // 64) * 64
+
+#     motion = motion[:,:T].view(B,T//classifier_window, classifier_window, D)
+
+#     motion = motion.contiguous().view(-1, classifier_window, D)
+
+
+
+#     pred_labels = classifier(motion.float())
+#     pred_val,pred_labels = torch.max(pred_labels, 1)
+
+#     pred_val = pred_val.view((B,T//classifier_window))
+#     pred_labels = pred_labels.view(B,T//classifier_window)
+
+
+#### TASK-1: Similiar to LIMO given a target function. Optimize the latents to reach that target function.  
+def decode_latent(net, x_d):
+    x_d = x_d.view(1, -1, net.vqvae.code_dim).permute(0, 2, 1).contiguous()
+    
+    # decoder
+    x_decoder = net.vqvae.decoder(x_d)
+    # x_out = net.vqvae.postprocess(x_decoder)
+    return x_out
+
+
+def get_optimized_z(): 
+    z = np.random.choice(args.nb_code, (args.batch_size, args.seq_len))
+    z = torch.from_numpy(z).to(device)
+    
+    z = net.vqvae.quantizer.dequantize(z)    
+    z.requires_grad=True
+ 
+    
+    category = 0
+
+    optimizer = torch.optim.Adam([z], lr=args.lr)
+
+    for epoch in tqdm(range(args.total_iter)):
+        optimizer.zero_grad()
+        pred_motion = decode_latent(net,z)
+        loss = (pred_motion - category).pow(2).mean()
+        loss.backward()
+        optimizer.step()
+
+        print(z.mean())
+        print(loss.item())
+
+
+    return z
+
+
+get_optimized_z()
