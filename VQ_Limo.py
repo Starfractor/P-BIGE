@@ -83,62 +83,66 @@ net.cuda()
 
 
 # Load Classifier 
-classifier = get_classifier(os.path.join(args.data_root,'classifier.pt'))
+classifier = get_classifier(os.path.join(args.data_root,'classifier.pt')).to(device)
 
 # Test classifier: 
 # for batch in val_loader:
-#     word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, token, name = batch
-#     B,T,D = motion.shape 
-#     classifier_window = 64
+    # word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, token, name = batch
+    # net(motion.to(device))
 
-#     # assert T % classifier_window == 0, "Sequence length should be divisible by classifier window size"
-
-#     T = (T // 64) * 64
-
-#     motion = motion[:,:T].view(B,T//classifier_window, classifier_window, D)
-
-#     motion = motion.contiguous().view(-1, classifier_window, D)
-
-
-
-#     pred_labels = classifier(motion.float())
-#     pred_val,pred_labels = torch.max(pred_labels, 1)
-
-#     pred_val = pred_val.view((B,T//classifier_window))
-#     pred_labels = pred_labels.view(B,T//classifier_window)
 
 
 #### TASK-1: Similiar to LIMO given a target function. Optimize the latents to reach that target function.  
 def decode_latent(net, x_d):
-    x_d = x_d.view(1, -1, net.vqvae.code_dim).permute(0, 2, 1).contiguous()
-    
-    # decoder
+    x_d = x_d.permute(0, 2, 1).contiguous().float()
     x_decoder = net.vqvae.decoder(x_d)
-    # x_out = net.vqvae.postprocess(x_decoder)
+    x_out = x_decoder.permute(0, 2, 1)
+
     return x_out
 
+def classifiy_motion(classifier, motion, classifier_window = 64):
+    B,T,D = motion.shape 
 
-def get_optimized_z(): 
+    # Discard timesteps that are not multiple of classifier_window
+    T = (T // 64) * 64
+    motion = motion[:,:T].view(B,T//classifier_window, classifier_window, D)
+    motion = motion.contiguous().view(-1, classifier_window, D)
+
+    pred_labels = classifier(motion.float())
+    # pred_val,pred_labels = torch.max(pred_labels, 1)
+
+    # pred_val = pred_val.view((B,T//classifier_window))
+    # pred_labels = pred_labels.view(B,T//classifier_window)
+
+    return pred_labels
+
+
+def get_optimized_z(category=0): 
     z = np.random.choice(args.nb_code, (args.batch_size, args.seq_len))
     z = torch.from_numpy(z).to(device)
     
     z = net.vqvae.quantizer.dequantize(z)    
-    z.requires_grad=True
+    z.requires_grad = True
  
-    
-    category = 0
+    loss_fn = torch.nn.CrossEntropyLoss()
+
 
     optimizer = torch.optim.Adam([z], lr=args.lr)
 
     for epoch in tqdm(range(args.total_iter)):
         optimizer.zero_grad()
         pred_motion = decode_latent(net,z)
-        loss = (pred_motion - category).pow(2).mean()
+
+        pred_labels = classifiy_motion(classifier,pred_motion)
+        B = pred_labels.shape[0]
+        category_vec = category*torch.ones(B).long().to(device)
+
+        loss = loss_fn(pred_labels, category_vec) 
         loss.backward()
         optimizer.step()
 
-        print(z.mean())
-        print(loss.item())
+        if epoch % 10 == 0:
+            logger.info('Epoch [{}/{}], CELoss: {:.4f}'.format(epoch, args.total_iter, loss.item()))
 
 
     return z
