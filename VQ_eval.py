@@ -40,7 +40,7 @@ eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
 ##### ---- Dataloader ---- #####
 args.nb_joints = 21 if args.dataname == 'kit' else 22
 
-val_loader = dataset_TM_eval.DATALoader(args.dataname, True, 32, w_vectorizer, unit_length=2**args.down_t)
+val_loader = dataset_TM_eval.DATALoader(args.dataname, True, 32, w_vectorizer, unit_length=2**args.down_t,data_root=args.data_root)
 
 ##### ---- Network ---- #####
 net = vqvae.HumanVQVAE(args, ## use args to define different parameters in different quantizers
