@@ -24,12 +24,12 @@ from classifiers import get_classifier
 args = option_limo.get_args_parser()
 torch.manual_seed(args.seed)
 
-random.seed(args.seed)
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
-torch.cuda.manual_seed_all(args.seed)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark=False
+# random.seed(args.seed)
+# np.random.seed(args.seed)
+# torch.manual_seed(args.seed)
+# torch.cuda.manual_seed_all(args.seed)
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark=False
 
 
 args.out_dir = os.path.join(args.out_dir, f'{args.exp_name}')
@@ -54,7 +54,7 @@ eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
 ##### ---- Dataloader ---- #####
 args.nb_joints = 21 if args.dataname == 'kit' else 22
 
-val_loader = dataset_TM_eval.DATALoader(args.dataname, True, 32, w_vectorizer, unit_length=2**args.down_t,data_root=args.data_root)
+val_loader = dataset_TM_eval.DATALoader(args.dataname, True, 32, w_vectorizer, unit_length=2**args.down_t)
 
 ##### ---- Device ---- #####
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -148,4 +148,26 @@ def get_optimized_z(category=0):
     return z
 
 
-get_optimized_z()
+save_path = "LIMO_generations/"
+
+for i in range(13):
+    save_folder = save_path + 'category_'+str(i)
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+    
+    z = get_optimized_z(category=i)
+    decoded_z = decode_latent(net,z)
+    
+    bs = decoded_z.shape[0]
+    for j in range(bs):
+        entry = decoded_z[j]
+        file_path = os.path.join(save_folder,f'entry_{j}.npy')
+        np.save(file_path, entry.cpu().detach().numpy())
+
+# z = get_optimized_z()
+# # z = z.detach().float()
+# # decoded_z = net.vqvae.quantizer.dequantize(z)
+# decoded_z = decode_latent(net,z)
+
+
+

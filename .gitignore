@@ -1,6 +1,8 @@
 # DATA DIR
 data
 MCS_DATA
+output
+checkpoints
 
 # VS-Code
 .vscode
