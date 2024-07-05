@@ -17,7 +17,7 @@ import warnings
 warnings.filterwarnings('ignore')
 import numpy as np
 
-from classifiers import get_classifier
+from classifiers import get_classifier,desc_to_action
 
 
 ##### ---- Exp dirs ---- #####
@@ -54,7 +54,7 @@ eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
 ##### ---- Dataloader ---- #####
 args.nb_joints = 21 if args.dataname == 'kit' else 22
 
-val_loader = dataset_TM_eval.DATALoader(args.dataname, True, 32, w_vectorizer, unit_length=2**args.down_t)
+val_loader = dataset_TM_eval.DATALoader(args.dataname, True, 32, w_vectorizer, unit_length=2**args.down_t,data_root=args.data_root)
 
 ##### ---- Device ---- #####
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -129,9 +129,15 @@ def get_optimized_z(category=0):
 
     optimizer = torch.optim.Adam([z], lr=args.lr)
 
+    data_mean = torch.from_numpy(val_loader.dataset.mean).to(device)
+    data_std = torch.from_numpy(val_loader.dataset.std).to(device)
+
     for epoch in tqdm(range(args.total_iter)):
         optimizer.zero_grad()
         pred_motion = decode_latent(net,z)
+
+        # De-Normalize
+        pred_motion = pred_motion * data_std.view(1,1,-1) + data_mean.view(1,1,-1)
 
         pred_labels = classifiy_motion(classifier,pred_motion)
         B = pred_labels.shape[0]
@@ -144,18 +150,41 @@ def get_optimized_z(category=0):
         if epoch % 10 == 0:
             logger.info('Epoch [{}/{}], CELoss: {:.4f}'.format(epoch, args.total_iter, loss.item()))
 
+    ## SORT THE LATENTS BY THE LABELS
+    loss_fn = torch.nn.CrossEntropyLoss(reduce=False)
+    with torch.no_grad():
+        pred_motion = decode_latent(net,z)
 
-    return z
+        # De-Normalize
+        pred_motion = pred_motion * data_std.view(1,1,-1) + data_mean.view(1,1,-1)
+
+        pred_labels = classifiy_motion(classifier,pred_motion)
+        B = pred_labels.shape[0]
+        category_vec = category*torch.ones(B).long().to(device)
+
+        loss = loss_fn(pred_labels, category_vec)
+
+        loss = loss.view(args.batch_size,-1) # Reshape to match sample x classifier window 
+
+        loss = loss.sum(1) # Sum across classifier windows      
+
+        sort_indices = torch.argsort(loss)
+
+        z = z[sort_indices]
+        loss = loss[sort_indices]
+
+    return z,loss
 
 
 save_path = "LIMO_generations/"
 
 for i in range(13):
-    save_folder = save_path + 'category_'+str(i)
+    category_name = "_".join(desc_to_action[i].split(' '))
+    save_folder = save_path + 'category_'+category_name
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
     
-    z = get_optimized_z(category=i)
+    z,score = get_optimized_z(category=i)
     decoded_z = decode_latent(net,z)
     
     bs = decoded_z.shape[0]
@@ -163,6 +192,8 @@ for i in range(13):
         entry = decoded_z[j]
         file_path = os.path.join(save_folder,f'entry_{j}.npy')
         np.save(file_path, entry.cpu().detach().numpy())
+
+    np.save(os.path.join(save_path,f'scores_{category_name}.npy'), score.cpu().detach().numpy())
 
 # z = get_optimized_z()
 # # z = z.detach().float()

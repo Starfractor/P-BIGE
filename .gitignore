@@ -3,6 +3,7 @@ data
 MCS_DATA
 output
 checkpoints
+LIMO_generations
 
 # VS-Code
 .vscode

@@ -20,7 +20,22 @@ num_classes = 13 #len(np.unique(Y))  # Assuming Y contains integer labels
 learning_rate = 0.0005
 num_epochs = 100
 
-
+action_to_desc = {
+        "bend and pull full" : 0,
+        "countermovement jump" : 1,
+        "left countermovement jump" : 2,
+        "left lunge and twist" : 3,
+        "left lunge and twist full" : 4,
+        "right countermovement jump" : 5,
+        "right lunge and twist" : 6,
+        "right lunge and twist full" : 7,
+        "right single leg squat" : 8,
+        "squat" : 9,
+        "bend and pull" : 10,
+        "left single leg squat" : 11,
+        "push up" : 12
+    }
+desc_to_action = sorted(action_to_desc.keys(), key=lambda x: action_to_desc[x]) 
 
 class MLP(nn.Module):
     def __init__(self, input_size, hidden_size1, hidden_size2, num_classes, mcs_classes=5):
