@@ -177,8 +177,12 @@ def get_optimized_z(category=0):
 
 
 save_path = "LIMO_generations/"
-
+data_mean = torch.from_numpy(val_loader.dataset.mean).to(device)
+data_std = torch.from_numpy(val_loader.dataset.std).to(device)
 for i in range(13):
+
+    torch.cuda.empty_cache() # Clear cache to avoid extra memory usage
+
     category_name = "_".join(desc_to_action[i].split(' '))
     save_folder = save_path + 'category_'+category_name
     if not os.path.exists(save_folder):
@@ -186,7 +190,9 @@ for i in range(13):
     
     z,score = get_optimized_z(category=i)
     decoded_z = decode_latent(net,z)
-    
+    # De-Normalize
+    decoded_z = decoded_z * data_std.view(1,1,-1) + data_mean.view(1,1,-1)
+
     bs = decoded_z.shape[0]
     for j in range(bs):
         entry = decoded_z[j]
@@ -195,10 +201,8 @@ for i in range(13):
 
     np.save(os.path.join(save_path,f'scores_{category_name}.npy'), score.cpu().detach().numpy())
 
-# z = get_optimized_z()
-# # z = z.detach().float()
-# # decoded_z = net.vqvae.quantizer.dequantize(z)
-# decoded_z = decode_latent(net,z)
-
+    del z 
+    del score
+    del decoded_z
 
 
