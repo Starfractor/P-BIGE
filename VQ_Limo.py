@@ -210,6 +210,3 @@ for i in range(13):
     del score
     del decoded_z
 
-    break
-
-
