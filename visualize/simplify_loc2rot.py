@@ -70,9 +70,8 @@ class joints2smpl:
         # run the whole seqs
         num_seqs = input_joints.shape[0]
 
-
         # joints3d = input_joints[idx]  # *1.2 #scale problem [check first]
-        keypoints_3d = torch.Tensor(input_joints).to(self.device).float()
+        keypoints_3d = input_joints.to(self.device).float()
 
         # if idx == 0:
         if init_params is None:
