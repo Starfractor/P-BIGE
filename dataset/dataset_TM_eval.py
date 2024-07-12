@@ -233,9 +233,9 @@ class Text2MotionDataset(data.Dataset):
 
 def DATALoader(dataset_name, is_test,
                 batch_size, w_vectorizer,
-                num_workers = 8, unit_length = 4,data_root=None) : 
+                num_workers = 8, unit_length = 4,data_root=None,mode='eval'): 
     
-    val_loader = torch.utils.data.DataLoader(Text2MotionDataset(dataset_name, is_test, w_vectorizer, unit_length=unit_length,data_root=data_root),
+    val_loader = torch.utils.data.DataLoader(Text2MotionDataset(dataset_name, is_test, w_vectorizer, unit_length=unit_length,data_root=data_root,mode=mode),
                                               batch_size,
                                               shuffle = True,
                                               num_workers=num_workers,
