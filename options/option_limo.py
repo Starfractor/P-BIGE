@@ -67,5 +67,8 @@ def get_args_parser():
     parser.add_argument('--data_root', default='/home/ubuntu/data/HumanML3D', type=str, help='Directory where the training and evaluation data strored in HumanML3D format')
     parser.add_argument('--topk', type=int, default=100, help='Choose the best topk results from the total number of samples')
     
-    
+    ## Loss optimization hyperparameters
+    parser.add_argument('--loss-temporal', type=float, default=0.01, help='Hyperparameter for temporal regulaizer')
+
+
     return parser.parse_args()
