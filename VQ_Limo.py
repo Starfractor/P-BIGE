@@ -3,6 +3,7 @@ import json
 from tqdm import tqdm
 
 import torch
+import torch.nn.functional as F
 import random
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
@@ -18,7 +19,7 @@ warnings.filterwarnings('ignore')
 import numpy as np
 
 from classifiers import get_classifier,desc_to_action
-
+from utils.motion_process import recover_from_ric
 
 ##### ---- Exp dirs ---- #####
 args = option_limo.get_args_parser()
@@ -143,7 +144,11 @@ def get_optimized_z(category=0):
         B = pred_labels.shape[0]
         category_vec = category*torch.ones(B).long().to(device)
 
+        pred_xyz = recover_from_ric(pred_motion,22)
+        loss_temporal = F.smooth_l1_loss(pred_xyz[:,1:], pred_xyz[:,:-1])
+ 
         loss = loss_fn(pred_labels, category_vec) 
+        loss += loss_temporal * args.loss_temporal
         loss.backward()
         optimizer.step()
 
@@ -176,7 +181,6 @@ def get_optimized_z(category=0):
     return z,loss
 
 
-save_path = "LIMO_generations/"
 data_mean = torch.from_numpy(val_loader.dataset.mean).to(device)
 data_std = torch.from_numpy(val_loader.dataset.std).to(device)
 for i in range(13):
@@ -184,7 +188,7 @@ for i in range(13):
     torch.cuda.empty_cache() # Clear cache to avoid extra memory usage
 
     category_name = "_".join(desc_to_action[i].split(' '))
-    save_folder = save_path + 'category_'+category_name
+    save_folder = os.path.join(args.out_dir,'category_'+category_name)
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
     
@@ -194,15 +198,18 @@ for i in range(13):
     decoded_z = decoded_z * data_std.view(1,1,-1) + data_mean.view(1,1,-1)
 
     bs = decoded_z.shape[0]
+    bs = min(bs,args.topk)
     for j in range(bs):
         entry = decoded_z[j]
         file_path = os.path.join(save_folder,f'entry_{j}.npy')
         np.save(file_path, entry.cpu().detach().numpy())
 
-    np.save(os.path.join(save_path,f'scores_{category_name}.npy'), score.cpu().detach().numpy())
+    np.save(os.path.join(args.out_dir,f'scores_{category_name}.npy'), score.cpu().detach().numpy())
 
     del z 
     del score
     del decoded_z
+
+    break
 
 
