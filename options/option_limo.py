@@ -65,7 +65,7 @@ def get_args_parser():
     parser.add_argument("--if-maxtest", action='store_true', help="test in max")
     parser.add_argument('--pkeep', type=float, default=1.0, help='keep rate for gpt training')
     parser.add_argument('--data_root', default='/home/ubuntu/data/HumanML3D', type=str, help='Directory where the training and evaluation data strored in HumanML3D format')
-    parser.add_argument('--topk', type=int, default=100, type=str, help='Choose the best topk results from the total number of samples')
+    parser.add_argument('--topk', type=int, default=100, help='Choose the best topk results from the total number of samples')
     
     
     return parser.parse_args()

@@ -510,7 +510,7 @@ def calculate_multimodality(activation, multimodality_times):
 
 def calculate_diversity(activation, diversity_times):
     assert len(activation.shape) == 2
-    assert activation.shape[0] > diversity_times
+    assert activation.shape[0] > diversity_times, f"Activation Shape:{activation.shape[0]} diversity time:{diversity_times}"
     num_samples = activation.shape[0]
 
     first_indices = np.random.choice(num_samples, diversity_times, replace=False)
