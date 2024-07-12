@@ -8,14 +8,14 @@ def get_args_parser():
     ## dataloader
     
     parser.add_argument('--dataname', type=str, default='kit', help='dataset directory')
-    parser.add_argument('--batch-size', default=128, type=int, help='batch size')
+    parser.add_argument('--batch-size', default=500, type=int, help='batch size')
     parser.add_argument('--fps', default=[20], nargs="+", type=int, help='frames per second')
-    parser.add_argument('--seq-len', type=int, default=64, help='training motion length')
+    parser.add_argument('--seq-len', type=int, default=48, help='training motion length')
     
     ## optimization 
-    parser.add_argument('--total-iter', default=100000, type=int, help='number of total iterations to run')
+    parser.add_argument('--total-iter', default=2000, type=int, help='number of total iterations to run')
     parser.add_argument('--warm-up-iter', default=1000, type=int, help='number of total iterations for warmup')
-    parser.add_argument('--lr', default=2e-4, type=float, help='max learning rate')
+    parser.add_argument('--lr', default=1e-2, type=float, help='max learning rate')
     parser.add_argument('--lr-scheduler', default=[60000], nargs="+", type=int, help="learning rate schedule (iterations)")
     parser.add_argument('--gamma', default=0.05, type=float, help="learning rate decay")
     
@@ -50,7 +50,7 @@ def get_args_parser():
     parser.add_argument('--quantbeta', type=float, default=1.0, help='dataset directory')
 
     ## resume
-    parser.add_argument("--resume-pth", type=str, default=None, help='resume vq pth')
+    parser.add_argument("--resume-pth", type=str, default="output/VQVAE/net_best_fid.pth", help='resume vq pth')
     parser.add_argument("--resume-trans", type=str, default=None, help='resume gpt pth')
     
     

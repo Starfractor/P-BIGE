@@ -74,13 +74,12 @@ net = vqvae.HumanVQVAE(args, ## use args to define different parameters in diffe
                        args.vq_act,
                        args.vq_norm)
 
-if args.resume_pth : 
-    logger.info('loading checkpoint from {}'.format(args.resume_pth))
-    ckpt = torch.load(args.resume_pth, map_location='cpu')
-    net.load_state_dict(ckpt['net'], strict=True)
-# net.train()
+assert args.resume_pth is not None, "Cannot run the optimization without a trained VQ-VAE"
+logger.info('loading checkpoint from {}'.format(args.resume_pth))
+ckpt = torch.load(args.resume_pth, map_location='cpu')
+net.load_state_dict(ckpt['net'], strict=True)
 net.eval()
-net.cuda()
+net.to(device)
 
 
 # Load Classifier 
@@ -143,6 +142,8 @@ def get_optimized_z(category=0):
         pred_labels = classifiy_motion(classifier,pred_motion)
         B = pred_labels.shape[0]
         category_vec = category*torch.ones(B).long().to(device)
+
+
 
         pred_xyz = recover_from_ric(pred_motion,22)
         loss_temporal = F.smooth_l1_loss(pred_xyz[:,1:], pred_xyz[:,:-1])
