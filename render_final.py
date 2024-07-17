@@ -179,6 +179,7 @@ def render_skeleton(motions,savepath):
     motions = motions.detach().cpu().numpy()
     bone_array = [0,0, 0, 0,1, 2, 3, 4, 5, 6, 7,8,9,9,9,12,13,14,16,17,18,19,20,21]
     smpl_bone_array = np.array([[i,p] for i,p in enumerate(bone_array)])
+    motions[:,:,2] *= -1 # Replace z-axis with -z-axis. 
 
     import polyscope as ps
 
@@ -189,7 +190,7 @@ def render_skeleton(motions,savepath):
         smpl_skeleton.update_node_positions(motions[i])
         ps.screenshot(f"/tmp/skeleton/{i}.png")
 
-    os.system(f"ffmpeg -i /tmp/skeleton/%d.png {savepath}.mp4")
+    os.system(f"ffmpeg -y -i /tmp/skeleton/%d.png -pix_fmt yuv420p {savepath}.mp4")
 
 
 if __name__ == "__main__":
