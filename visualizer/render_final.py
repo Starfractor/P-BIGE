@@ -218,7 +218,7 @@ class PolyScopeVisualizer:
             "experiment_options_selected": self.exps[0],
 
             "category_options": self.categories,
-            "category_options_selected": self.categories[0],
+            "category_options_selected": self.categories[1],
 
             "rank": 1,
 
@@ -271,11 +271,11 @@ class PolyScopeVisualizer:
 
 
         ############## Create the GUI to update the animations 
-        psim.Begin("Video Controller",True)
+        # psim.Begin("Video Controller",True)
 
 
-        psim.SetWindowPos((1340,100.0),1) # Set the position the window at the bottom of the GUI
-        psim.SetWindowSize((500.0,700.0),1)
+        # psim.SetWindowPos((1340,100.0),1) # Set the position the window at the bottom of the GUI
+        # psim.SetWindowSize((500.0,700.0),1)
 
         # Create a floater to show the timestep and adject self.t accordingly
         changed, self.t = psim.SliderInt("", self.t, v_min=0, v_max=self.T)
@@ -486,7 +486,7 @@ if __name__ == "__main__":
     filename_list = args.motion_list
     filedir = args.filedir
     
-    vis = PolyScopeVisualizer(exp_dir="./output")
+    vis = PolyScopeVisualizer(exp_dir="./output-viz")
 
     for filename in filename_list:
         motions = np.load(os.path.join(filedir ,filename + '.npy' ))
