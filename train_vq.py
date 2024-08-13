@@ -16,6 +16,35 @@ from models.evaluator_wrapper import EvaluatorModelWrapper
 import warnings
 warnings.filterwarnings('ignore')
 from utils.word_vectorizer import WordVectorizer
+import numpy as np
+from classifier import MotionClassifierCNN
+import torch.nn.functional as F
+
+action_to_desc = {
+        "bend and pull full" : 0,
+        "countermovement jump" : 1,
+        "left countermovement jump" : 2,
+        "left lunge and twist" : 3,
+        "left lunge and twist full" : 4,
+        "right countermovement jump" : 5,
+        "right lunge and twist" : 6,
+        "right lunge and twist full" : 7,
+        "right single leg squat" : 8,
+        "squat" : 9,
+        "bend and pull" : 10,
+        "left single leg squat" : 11,
+        "push up" : 12
+    }
+
+classifier_model = MotionClassifierCNN()
+classifier_model.load_state_dict(torch.load("motion_classifier_cnn.pth", map_location='cuda'))
+classifier_model.eval()
+
+def get_class(text):
+    out = []
+    for t in text:
+        out.append(action_to_desc[t])
+    return out
 
 def update_lr_warm_up(optimizer, nb_iter, warm_up_iter, lr):
 
@@ -24,6 +53,16 @@ def update_lr_warm_up(optimizer, nb_iter, warm_up_iter, lr):
         param_group["lr"] = current_lr
 
     return optimizer, current_lr
+
+def get_classifier_logits(motion, label, model, lamda = 10):
+    motion = torch.tensor(np.asarray(motion)).cuda()
+    label = torch.tensor(get_class(label)).cuda()
+    model = model.cuda()
+    logits = model(motion)
+    loss = F.cross_entropy(logits, label, reduction = 'none')
+    c = torch.exp(-loss*lamda)
+    # print(c)
+    return c
 
 ##### ---- Exp dirs ---- #####
 args = option_vq.get_args_parser()
@@ -103,12 +142,19 @@ for nb_iter in range(1, args.warm_up_iter):
     
     optimizer, current_lr = update_lr_warm_up(optimizer, nb_iter, args.warm_up_iter, args.lr)
     
-    gt_motion = next(train_loader_iter)
+    gt_motion, labels = next(train_loader_iter)
+    
+    wts = get_classifier_logits(gt_motion, labels, classifier_model)
+    
     gt_motion = gt_motion.cuda().float() # (bs, 64, dim)
 
     pred_motion, loss_commit, perplexity = net(gt_motion)
     loss_motion = Loss(pred_motion, gt_motion)
     loss_vel = Loss.forward_vel(pred_motion, gt_motion)
+    
+    loss_motion = (loss_motion * wts.view(256,1,1)).mean()
+    loss_vel = (loss_vel * wts.view(256,1,1)).mean()
+    # print(loss_motion, loss_vel, loss_commit, wts.shape)
     
     loss = loss_motion + args.commit * loss_commit + args.loss_vel * loss_vel
     
@@ -116,7 +162,7 @@ for nb_iter in range(1, args.warm_up_iter):
     loss.backward()
     optimizer.step()
 
-    avg_recons += loss_motion.item()
+    avg_recons += loss_motion.mean().item()
     avg_perplexity += perplexity.item()
     avg_commit += loss_commit.item()
     
@@ -135,21 +181,27 @@ best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, w
 
 for nb_iter in range(1, args.total_iter + 1):
     
-    gt_motion = next(train_loader_iter)
-    gt_motion = gt_motion.cuda().float() # bs, nb_joints, joints_dim, seq_len
+    gt_motion, labels = next(train_loader_iter)
     
+    wts = get_classifier_logits(gt_motion, labels, classifier_model)
+    
+    gt_motion = gt_motion.cuda().float() # (bs, 64, dim)
+
     pred_motion, loss_commit, perplexity = net(gt_motion)
     loss_motion = Loss(pred_motion, gt_motion)
     loss_vel = Loss.forward_vel(pred_motion, gt_motion)
+    
+    loss_motion = (loss_motion * wts.view(256,1,1)).mean()
+    loss_vel = (loss_vel * wts.view(256,1,1)).mean()
+    # print(loss_motion, loss_vel, loss_commit, wts.shape)
     
     loss = loss_motion + args.commit * loss_commit + args.loss_vel * loss_vel
     
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-    scheduler.step()
-    
-    avg_recons += loss_motion.item()
+
+    avg_recons += loss_motion.mean().item()
     avg_perplexity += perplexity.item()
     avg_commit += loss_commit.item()
     

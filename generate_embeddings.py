@@ -98,25 +98,38 @@ def generate_vqvae_embeddings():
 
 def generate_train_embeddings():
 
-
-
     for i,batch in enumerate(val_loader):
-        word_emb, pos_one_hot, caption, sent_len, motion, m_length, token, name = batch
-        print(i,motion.shape, caption[0])
+        word_emb, pos_one_hot, caption, sent_len, motion, m_length, token, name, mcs_score = batch
+        if mcs_score == -1:
+            continue
+        if mcs_score != 5:
+            continue
+        print(i,motion.shape, caption[0], mcs_score)
         motion = motion.cuda()
+        # print("motion shape:", motion.shape)
         m = net.vqvae.preprocess(motion)
+        # print("m shape:", m.shape)
         emb = net.vqvae.encoder(m)
+        # print("emb shape:", emb.shape)
+        # emb_proc = net.vqvae.postprocess(emb)
+        # print("emb proc shape:", emb_proc.shape)
+        
         emb = torch.squeeze(emb)
-        emb = torch.transpose(emb,0,1)
-        emb_list = emb.tolist()
-        for vec in emb_list:
-            action_to_desc[str(caption[0])].append(vec)
+        # emb = torch.transpose(emb,0,1)
+        emb = emb.cpu().detach().numpy()
+        print(emb.shape)
+        action_to_desc[str(caption[0])].append(emb)
+        
+        # emb_list = emb.tolist()
+        # for vec in emb_list:
+        #     action_to_desc[str(caption[0])].append(vec)
+        
 
-    os.makedirs(os.path.join(args.out_dir, 'embeddings'), exist_ok = True)
+    # os.makedirs(os.path.join(args.out_dir, 'embeddings'), exist_ok = True)
     for k,v in action_to_desc.items():
         array = np.array(v)
         print(array.shape)
-        np.save(os.path.join(args.out_dir, 'embeddings',f"{k}.npy"),array)
+        np.save(os.path.join('embeddings','mcs_5',f"{k}.npy"),array)
 
 
 def load_train_embeddings(directory='embeddings'):
@@ -147,6 +160,11 @@ def load_optimized_embeddings():
         assert key in desc_to_action, f"Error loading codebook vector:{key} not in desc_to_action"
 
         embedding = np.load(os.path.join(args.out_dir, filename))
+        
+        # Use the cut-off to select the best embeddings
+        embedding = embedding[:args.topk]
+        
+        embedding = embedding.reshape(-1,args.code_dim)
         embedding_dict[key] = embedding        
 
     return embedding_dict
@@ -182,7 +200,8 @@ def plot_closest_codebook_distance_distribution(codebook_embeddings,embedding_di
                             yaxis_title='Percentage of Occurrence',
                             xaxis={'type': 'category'})
             # fig.show()
-            fig.write_html(os.path.join(args.out_dir,'{}-Distribution-of-Closest-Codebook-Vector-Indices-for-{}'.format(name + '-' if name != '' else '',k)))
+            k = "-".join(k.split(' '))
+            fig.write_html(os.path.join(args.out_dir,'{}Distribution-of-Closest-Codebook-Vector-Indices-for-{}.html'.format(name + '-' if name != '' else '',k)))
 
 
         # Calculate the required percentiles and median
@@ -228,26 +247,26 @@ def plot_closest_codebook_distance_distribution(codebook_embeddings,embedding_di
     )
 
 
-    fig.write_html(os.path.join(args.out_dir,f"{name + '-' if name != '' else ''} Distance-Percentiles-for-Each-Category.html"))
+    fig.write_html(os.path.join(args.out_dir,f"{name + '-' if name != '' else ''}Distance-Percentiles-for-Each-Category.html"))
 
     # fig.show()
 
     
 
 # TSNE: Did not help in visualization. Embeddings for all samples look equally distributed. 
-def plot_tsne():
+def plot_tsne(codebook_embeddings, embedding_dict,name=''):
     from sklearn.manifold import TSNE
     fit_vector = codebook_embeddings
     fit_label = ['codebook']*codebook_embeddings.shape[0]
 
-    for k in train_embeddings:
-        if train_embeddings[k].shape[0] > 500:
-            sample_inds = np.random.choice(train_embeddings[k].shape[0], 500, replace = True)
+    for k in embedding_dict:
+        if embedding_dict[k].shape[0] > 500:
+            sample_inds = np.random.choice(embedding_dict[k].shape[0], 500, replace = True)
         else: 
-            sample_inds = np.arange(train_embeddings[k].shape[0])
+            sample_inds = np.arange(embedding_dict[k].shape[0])
         fit_label += [k]*len(sample_inds)
 
-        fit_vector = np.concatenate([fit_vector, train_embeddings[k][sample_inds]], axis = 0)
+        fit_vector = np.concatenate([fit_vector, embedding_dict[k][sample_inds]], axis = 0)
 
     fit_vector_2D = TSNE_model = TSNE(n_components=2, random_state=0).fit_transform(fit_vector)
 
@@ -260,7 +279,8 @@ def plot_tsne():
                      labels={'Dimension 1': 'TSNE-1', 'Dimension 2': 'TSNE-2'})
 
     # Show the plot
-    fig.show()
+    fig.write_html(os.path.join(args.out_dir,f"{name + '-' if name != '' else ''}tsne.html"))
+    # fig.show()
 
 
 
@@ -282,10 +302,14 @@ def proximity_loss(sample, label, embedding_dict, net):
     return np.min(distances)
 
 if __name__ == "__main__":
-    codebook_embeddings = generate_vqvae_embeddings()
-    train_embeddings = load_train_embeddings()
-    optimized_embeddings = load_optimized_embeddings()
+    # codebook_embeddings = generate_vqvae_embeddings()
+    # train_embeddings = load_train_embeddings()
+    # optimized_embeddings = load_optimized_embeddings()
 
-    plot_closest_codebook_distance_distribution(codebook_embeddings,train_embeddings,name='Train')
-    plot_closest_codebook_distance_distribution(codebook_embeddings,optimized_embeddings,name='Optimized')
+    # plot_closest_codebook_distance_distribution(codebook_embeddings,train_embeddings,name='Train',visualize_distribution=True)
+    # plot_closest_codebook_distance_distribution(codebook_embeddings,optimized_embeddings,name='Optimized',visualize_distribution=True)
 
+    # plot_tsne(codebook_embeddings,train_embeddings,name='Train')
+    # plot_tsne(codebook_embeddings,optimized_embeddings,name='Optimized')
+    
+    generate_train_embeddings()
