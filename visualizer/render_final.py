@@ -218,7 +218,7 @@ class PolyScopeVisualizer:
             "experiment_options_selected": self.exps[0],
 
             "category_options": self.categories,
-            "category_options_selected": self.categories[0],
+            "category_options_selected": self.categories[1],
 
             "rank": 1,
 
@@ -271,11 +271,11 @@ class PolyScopeVisualizer:
 
 
         ############## Create the GUI to update the animations 
-        psim.Begin("Video Controller",True)
+        # psim.Begin("Video Controller",True)
 
 
-        psim.SetWindowPos((1340,100.0),1) # Set the position the window at the bottom of the GUI
-        psim.SetWindowSize((500.0,700.0),1)
+        # psim.SetWindowPos((1340,100.0),1) # Set the position the window at the bottom of the GUI
+        # psim.SetWindowSize((500.0,700.0),1)
 
         # Create a floater to show the timestep and adject self.t accordingly
         changed, self.t = psim.SliderInt("", self.t, v_min=0, v_max=self.T)
@@ -419,7 +419,6 @@ class PolyScopeVisualizer:
         print("Successfully loaded", filepath)
 
     def render_skeleton(self,savepath):
-
         self.update_skeleton()
 
         bone_array = [0,0, 0, 0,1, 2, 3, 4, 5, 6, 7,8,9,9,9,12,13,14,16,17,18,19,20,21]
@@ -453,6 +452,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--filedir", type=str, default=None, help='motion npy file dir')
+    parser.add_argument("--out-dir", type=str, default="output-viz", help='Directory containing all experiements')
     parser.add_argument('--motion-list', default=None, nargs="+", type=str, help="motion name list")
 
 
@@ -486,17 +486,15 @@ if __name__ == "__main__":
     filename_list = args.motion_list
     filedir = args.filedir
     
-    vis = PolyScopeVisualizer(exp_dir="./output")
+    vis = PolyScopeVisualizer(exp_dir=args.out_dir)
 
     for filename in filename_list:
-        motions = np.load(os.path.join(filedir ,filename + '.npy' ))
-        if motions.shape[-1] == 251:
-            num_joints = 21
-            motions = recover_from_ric(torch.from_numpy(motions).float().cuda(), num_joints)
-        elif motions.shape[-1] == 263:
-            num_joints = 22
-            motions = recover_from_ric(torch.from_numpy(motions).float().cuda(), num_joints)
-        print('pred', motions.shape, filename)
+
+
+        vis.polyscope_scene["rank"] = int(filename.split('_')[-1])
+        vis.polyscope_scene["category_options_selected"] = os.path.basename(filedir).replace("category_","")
+        vis.polyscope_scene["experiment_options_selected"] = os.path.basename(os.path.dirname(filedir))
+
         vis.render_skeleton(os.path.join(filedir,filename))
         # render(motions, outdir=filedir, device_id=0, name=filename, pred=True)
 

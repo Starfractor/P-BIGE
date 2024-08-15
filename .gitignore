@@ -1,3 +1,5 @@
+
+
 # DATA DIR
 data
 MCS_DATA
@@ -8,6 +10,9 @@ output_vqfinal
 output_GPT_Final
 embeddings
 nohup.out
+body_models/
+output-foot/
+output-viz/
 
 # VS-Code
 .vscode
