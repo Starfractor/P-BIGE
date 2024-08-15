@@ -38,7 +38,7 @@ if __name__ == "__main__":
         
     args = option_limo.get_args_parser()
     torch.manual_seed(args.seed)
-
+    # parser.add_argument('--server-key', default=None, type=str, help="Private key for the server")
     # random.seed(args.seed)
     # np.random.seed(args.seed)
     # torch.manual_seed(args.seed)
