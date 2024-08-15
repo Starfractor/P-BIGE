@@ -6,11 +6,11 @@ class ReConsLoss(nn.Module):
         super(ReConsLoss, self).__init__()
         
         if recons_loss == 'l1': 
-            self.Loss = torch.nn.L1Loss()
+            self.Loss = torch.nn.L1Loss(reduction='none')
         elif recons_loss == 'l2' : 
-            self.Loss = torch.nn.MSELoss()
+            self.Loss = torch.nn.MSELoss(reduction='none')
         elif recons_loss == 'l1_smooth' : 
-            self.Loss = torch.nn.SmoothL1Loss()
+            self.Loss = torch.nn.SmoothL1Loss(reduction='none')
         
         # 4 global motion associated to root
         # 12 local motion (3 local xyz, 3 vel xyz, 6 rot6d)

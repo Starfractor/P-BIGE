@@ -19,6 +19,7 @@ hidden_size2 = 256
 num_classes = 13 #len(np.unique(Y))  # Assuming Y contains integer labels
 learning_rate = 0.0005
 num_epochs = 100
+stride=3
 
 action_to_desc = {
         "bend and pull full" : 0,

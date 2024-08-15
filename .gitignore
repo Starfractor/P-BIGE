@@ -4,6 +4,10 @@ MCS_DATA
 output
 checkpoints
 LIMO_generations
+output_vqfinal
+output_GPT_Final
+embeddings
+nohup.out
 
 # VS-Code
 .vscode
@@ -32,6 +36,8 @@ rgb_videos.zip
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pth
 
 # C extensions
 *.so
@@ -80,10 +86,12 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+*/__pycache__/*
 
 # Translations
 *.mo
 *.pot
+*.pyc
 
 # Django stuff:
 *.log

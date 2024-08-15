@@ -37,7 +37,7 @@ def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid
     matching_score_real = 0
     matching_score_pred = 0
     for batch in val_loader:
-        word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, token, name = batch
+        word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, token, name, _ = batch
         # print("motion length:", motion.shape)
         motion = motion.cuda()
         et, em = eval_wrapper.get_co_embeddings(word_embeddings, pos_one_hots, sent_len, motion, m_length)

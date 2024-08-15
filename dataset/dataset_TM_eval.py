@@ -9,11 +9,38 @@ from tqdm import tqdm
 from glob import glob
 import utils.paramUtil as paramUtil
 from torch.utils.data._utils.collate import default_collate
+import options.option_limo as option_limo
+
+############# ONLY Debugging, has to be removed.
+##### ---- Exp dirs ---- #####
+# args = option_limo.get_args_parser()
+# torch.manual_seed(args.seed)
+
+
+# args.out_dir = os.path.join(args.out_dir, f'{args.exp_name}')
+# os.makedirs(args.out_dir, exist_ok = True)
+
+action_to_desc = {
+        "bend and pull full" : 0,
+        "countermovement jump" : 1,
+        "left countermovement jump" : 2,
+        "left lunge and twist" : 3,
+        "left lunge and twist full" : 4,
+        "right countermovement jump" : 5,
+        "right lunge and twist" : 6,
+        "right lunge and twist full" : 7,
+        "right single leg squat" : 8,
+        "squat" : 9,
+        "bend and pull" : 10,
+        "left single leg squat" : 11,
+        "push up" : 12
+    }
 
 
 def collate_fn(batch):
     batch.sort(key=lambda x: x[3], reverse=True)
     return default_collate(batch)
+
 
 
 '''For use of training text-2-motion generative model'''
@@ -47,6 +74,7 @@ class Text2MotionDataset(data.Dataset):
 
             self.motion_dir = pjoin(self.data_root, 'new_joints_vecs')
             self.text_dir = pjoin(self.data_root, 'texts')
+            self.mcs_dir = pjoin(self.data_root, 'mcs')
             self.joints_num = 22
             radius = 4
             fps = 20
@@ -81,6 +109,8 @@ class Text2MotionDataset(data.Dataset):
         # min_motion_len = 64
 
         joints_num = self.joints_num
+
+        # non_failed_captions = [d.replace('category_','') for d in os.listdir(args.out_dir) if os.path.isdir(os.path.join(args.out_dir,d)) and 'category_' in d and len(os.listdir(os.path.join(args.out_dir,d)))]
 
         data_dict = {}
         # id_list = []
@@ -118,6 +148,11 @@ class Text2MotionDataset(data.Dataset):
                         f_tag = 0.0 if np.isnan(f_tag) else f_tag
                         to_tag = 0.0 if np.isnan(to_tag) else to_tag
 
+
+                        ############ TO BE FIXED ###############
+                        # if caption.replace(' ', '_') not in non_failed_captions: 
+                            # continue 
+
                         text_dict['caption'] = caption
                         text_dict['tokens'] = tokens
                         if f_tag == 0.0 and to_tag == 0.0:
@@ -140,11 +175,19 @@ class Text2MotionDataset(data.Dataset):
                                 print(line_split)
                                 print(line_split[2], line_split[3], f_tag, to_tag, name)
                                 # break
+                               
+                try:
+                    with cs.open(pjoin(self.mcs_dir, name + '.txt')) as f:
+                        for line in f.readlines():
+                            mcs_score = int(line.strip())
+                except:
+                    mcs_score = -1
 
                 if flag:
                     data_dict[name] = {'motion': motion,
                                        'length': len(motion),
-                                       'text': text_data}
+                                       'text': text_data,
+                                       'mcs': mcs_score}
                     new_name_list.append(name)
                     length_list.append(len(motion))
             except Exception as e:
@@ -182,7 +225,7 @@ class Text2MotionDataset(data.Dataset):
         name = self.name_list[idx]
         data = self.data_dict[name]
         # data = self.data_dict[self.name_list[idx]]
-        motion, m_length, text_list = data['motion'], data['length'], data['text']
+        motion, m_length, text_list, mcs_score = data['motion'], data['length'], data['text'], data['mcs']
         # Randomly select a caption
         text_data = random.choice(text_list)
         caption, tokens = text_data['caption'], text_data['tokens']
@@ -226,7 +269,7 @@ class Text2MotionDataset(data.Dataset):
                                      np.zeros((self.max_motion_length - m_length, motion.shape[1]))
                                      ], axis=0)
 
-        return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, '_'.join(tokens), name
+        return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, '_'.join(tokens), name, mcs_score
 
 
 
