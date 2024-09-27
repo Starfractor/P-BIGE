@@ -1,50 +1,26 @@
 import os
 import json
 
+# from osim_sequence import OSIMSequence,load_osim
+
 import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 import models.vqvae as vqvae
 import utils.losses as losses 
 import options.option_vq as option_vq
 import utils.utils_model as utils_model
-from dataset import dataset_VQ, dataset_TM_eval
+from dataset import dataset_opencap, dataset_TM_eval
 import utils.eval_trans as eval_trans
 from options.get_eval_option import get_opt
 from models.evaluator_wrapper import EvaluatorModelWrapper
 import warnings
 warnings.filterwarnings('ignore')
 from utils.word_vectorizer import WordVectorizer
-import numpy as np
-from classifier import MotionClassifierCNN
-import torch.nn.functional as F
+# import nimblephysics as nimble
 
-action_to_desc = {
-        "bend and pull full" : 0,
-        "countermovement jump" : 1,
-        "left countermovement jump" : 2,
-        "left lunge and twist" : 3,
-        "left lunge and twist full" : 4,
-        "right countermovement jump" : 5,
-        "right lunge and twist" : 6,
-        "right lunge and twist full" : 7,
-        "right single leg squat" : 8,
-        "squat" : 9,
-        "bend and pull" : 10,
-        "left single leg squat" : 11,
-        "push up" : 12
-    }
-
-classifier_model = MotionClassifierCNN()
-classifier_model.load_state_dict(torch.load("motion_classifier_cnn.pth", map_location='cuda'))
-classifier_model.eval()
-
-def get_class(text):
-    out = []
-    for t in text:
-        out.append(action_to_desc[t])
-    return out
 
 def update_lr_warm_up(optimizer, nb_iter, warm_up_iter, lr):
 
@@ -53,16 +29,6 @@ def update_lr_warm_up(optimizer, nb_iter, warm_up_iter, lr):
         param_group["lr"] = current_lr
 
     return optimizer, current_lr
-
-def get_classifier_logits(motion, label, model, lamda = 10):
-    motion = torch.tensor(np.asarray(motion)).cuda()
-    label = torch.tensor(get_class(label)).cuda()
-    model = model.cuda()
-    logits = model(motion)
-    loss = F.cross_entropy(logits, label, reduction = 'none')
-    c = torch.exp(-loss*lamda)
-    # print(c)
-    return c
 
 ##### ---- Exp dirs ---- #####
 args = option_vq.get_args_parser()
@@ -75,8 +41,6 @@ os.makedirs(args.out_dir, exist_ok = True)
 logger = utils_model.get_logger(args.out_dir)
 writer = SummaryWriter(args.out_dir)
 logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
-
-
 
 w_vectorizer = WordVectorizer('./glove', 'our_vab')
 
@@ -95,12 +59,12 @@ eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
 
 
 ##### ---- Dataloader ---- #####
-train_loader = dataset_VQ.DATALoader(args.dataname,
+train_loader = dataset_opencap.DATALoader(args.dataname,
                                         args.batch_size,
                                         window_size=args.window_size,
                                         unit_length=2**args.down_t)
 
-train_loader_iter = dataset_VQ.cycle(train_loader)
+train_loader_iter = dataset_opencap.cycle(train_loader)
 
 val_loader = dataset_TM_eval.DATALoader(args.dataname, False,
                                         32,
@@ -123,13 +87,13 @@ net = vqvae.HumanVQVAE(args, ## use args to define different parameters in diffe
 
 if args.resume_pth : 
     logger.info('loading checkpoint from {}'.format(args.resume_pth))
-    ckpt = torch.load(args.resume_pth, map_location='cpu')
+    ckpt = torch.load(args.resume_pth, map_location='cuda')
     net.load_state_dict(ckpt['net'], strict=True)
 net.train()
 net.cuda()
 
 ##### ---- Optimizer & Scheduler ---- #####
-optimizer = optim.AdamW(net.parameters(), lr=args.lr, betas=(0.9, 0.99), weight_decay=args.weight_decay)
+optimizer = optim.Adam(net.parameters(), lr=args.lr, betas=(0.9, 0.99), weight_decay=args.weight_decay)
 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_scheduler, gamma=args.gamma)
   
 
@@ -142,27 +106,24 @@ for nb_iter in range(1, args.warm_up_iter):
     
     optimizer, current_lr = update_lr_warm_up(optimizer, nb_iter, args.warm_up_iter, args.lr)
     
-    gt_motion, labels = next(train_loader_iter)
-    
-    wts = get_classifier_logits(gt_motion, labels, classifier_model)
-    
+    gt_motion,_, names = next(train_loader_iter)
     gt_motion = gt_motion.cuda().float() # (bs, 64, dim)
 
     pred_motion, loss_commit, perplexity = net(gt_motion)
     loss_motion = Loss(pred_motion, gt_motion)
-    loss_vel = Loss.forward_vel(pred_motion, gt_motion)
     
-    loss_motion = (loss_motion * wts.view(256,1,1)).mean()
-    loss_vel = (loss_vel * wts.view(256,1,1)).mean()
-    # print(loss_motion, loss_vel, loss_commit, wts.shape)
     
-    loss = loss_motion + args.commit * loss_commit + args.loss_vel * loss_vel
+    # Sampling for classifier guidance    
+    # wts = get_classifier_logits(gt_motion, labels, classifier_model)
+    # loss_motion = (loss_motion * wts.view(256,1,1)).mean()
+    loss_motion = loss_motion.mean()
+
+    loss = loss_motion + args.commit * loss_commit  
     
-    optimizer.zero_grad()
-    loss.backward()
+
     optimizer.step()
 
-    avg_recons += loss_motion.mean().item()
+    avg_recons += loss_motion.item()
     avg_perplexity += perplexity.item()
     avg_commit += loss_commit.item()
     
@@ -177,31 +138,33 @@ for nb_iter in range(1, args.warm_up_iter):
 
 ##### ---- Training ---- #####
 avg_recons, avg_perplexity, avg_commit = 0., 0., 0.
-best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, 0, best_fid=1000, best_iter=0, best_div=100, best_top1=0, best_top2=0, best_top3=0, best_matching=100, eval_wrapper=eval_wrapper)
+torch.save({'net' : net.state_dict()}, os.path.join(args.out_dir, 'warmup.pth'))
+# best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, 0, best_fid=1000, best_iter=0, best_div=100, best_top1=0, best_top2=0, best_top3=0, best_matching=100, eval_wrapper=eval_wrapper)
 
 for nb_iter in range(1, args.total_iter + 1):
     
-    gt_motion, labels = next(train_loader_iter)
+    gt_motion,_,_ = next(train_loader_iter)
+    gt_motion = gt_motion.cuda().float() # bs, nb_joints, joints_dim, seq_len
     
-    wts = get_classifier_logits(gt_motion, labels, classifier_model)
-    
-    gt_motion = gt_motion.cuda().float() # (bs, 64, dim)
-
     pred_motion, loss_commit, perplexity = net(gt_motion)
     loss_motion = Loss(pred_motion, gt_motion)
-    loss_vel = Loss.forward_vel(pred_motion, gt_motion)
     
-    loss_motion = (loss_motion * wts.view(256,1,1)).mean()
-    loss_vel = (loss_vel * wts.view(256,1,1)).mean()
-    # print(loss_motion, loss_vel, loss_commit, wts.shape)
+    # Sampling for classifier guidance    
+    # wts = get_classifier_logits(gt_motion, labels, classifier_model)
+    # loss_motion = (loss_motion * wts.view(256,1,1)).mean()
+    loss_motion = loss_motion.mean()
     
-    loss = loss_motion + args.commit * loss_commit + args.loss_vel * loss_vel
+    # loss_pn, loss_fl, loss_sk = get_foot_losses(pred_motion)
+    # print(loss_pn, loss_fl, loss_sk)
+    
+    loss = loss_motion + args.commit * loss_commit 
     
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-
-    avg_recons += loss_motion.mean().item()
+    scheduler.step()
+    
+    avg_recons += loss_motion.item()
     avg_perplexity += perplexity.item()
     avg_commit += loss_commit.item()
     
@@ -217,7 +180,15 @@ for nb_iter in range(1, args.total_iter + 1):
         logger.info(f"Train. Iter {nb_iter} : \t Commit. {avg_commit:.5f} \t PPL. {avg_perplexity:.2f} \t Recons.  {avg_recons:.5f}")
         
         avg_recons, avg_perplexity, avg_commit = 0., 0., 0.,
+    
+    if nb_iter % (10*args.eval_iter) == 0:
+        torch.save({'net' : net.state_dict()}, os.path.join(args.out_dir, str(nb_iter) + '.pth'))
 
-    if nb_iter % args.eval_iter==0 :
-        best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, eval_wrapper=eval_wrapper)
+    # if nb_iter % args.eval_iter==0 :
+    #     # The line `best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching,
+    #     # writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer,
+    #     # nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching,
+    #     # eval_wrapper=eval_wrapper)` is calling a function named `evaluation_vqvae` from the
+    #     # `eval_trans` module.
+    #     best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, eval_wrapper=eval_wrapper)
         
