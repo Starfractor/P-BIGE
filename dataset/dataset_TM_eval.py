@@ -5,7 +5,7 @@ from os.path import join as pjoin
 import random
 import codecs as cs
 from tqdm import tqdm
-
+from glob import glob
 import utils.paramUtil as paramUtil
 from torch.utils.data._utils.collate import default_collate
 
@@ -17,7 +17,7 @@ def collate_fn(batch):
 
 '''For use of training text-2-motion generative model'''
 class Text2MotionDataset(data.Dataset):
-    def __init__(self, dataset_name, is_test, w_vectorizer, feat_bias = 5, max_text_len = 20, unit_length = 4):
+    def __init__(self, dataset_name, is_test, w_vectorizer, feat_bias = 5, max_text_len = 20, unit_length = 4, mode = "eval"):
         
         self.max_length = 20
         self.pointer = 0
@@ -37,6 +37,19 @@ class Text2MotionDataset(data.Dataset):
             dim_pose = 263
             kinematic_chain = paramUtil.t2m_kinematic_chain
             self.meta_dir = 'checkpoints/t2m/VQVAEV3_CB1024_CMT_H1024_NRES3/meta'
+        
+        elif dataset_name == 'mcs':
+            self.data_root = '/home/ubuntu/data/HumanML3D' + "/" + mode
+            self.motion_dir = pjoin(self.data_root, 'new_joints_vecs')
+            self.text_dir = pjoin(self.data_root, 'texts')
+            self.joints_num = 22
+            radius = 4
+            fps = 20
+            self.max_motion_length = 196
+            dim_pose = 263
+            kinematic_chain = paramUtil.t2m_kinematic_chain
+            self.meta_dir = '/home/ubuntu/data/HumanML3D'
+
         elif dataset_name == 'kit':
             self.data_root = './dataset/KIT-ML'
             self.motion_dir = pjoin(self.data_root, 'new_joint_vecs')
@@ -49,32 +62,42 @@ class Text2MotionDataset(data.Dataset):
             kinematic_chain = paramUtil.kit_kinematic_chain
             self.meta_dir = 'checkpoints/kit/VQVAEV3_CB1024_CMT_H1024_NRES3/meta'
 
-        mean = np.load(pjoin(self.meta_dir, 'mean.npy'))
-        std = np.load(pjoin(self.meta_dir, 'std.npy'))
+        mean = np.load(pjoin(self.meta_dir, 'Mean.npy'))
+        std = np.load(pjoin(self.meta_dir, 'Std.npy'))
         
         if is_test:
             split_file = pjoin(self.data_root, 'test.txt')
         else:
             split_file = pjoin(self.data_root, 'val.txt')
 
-        min_motion_len = 40 if self.dataset_name =='t2m' else 24
+        min_motion_len = 40 if self.dataset_name =='mcs' else 24 #changed t2m to mcs
         # min_motion_len = 64
 
         joints_num = self.joints_num
 
         data_dict = {}
+        # id_list = []
+        # with cs.open(split_file, 'r') as f:
+        #     for line in f.readlines():
+        #         id_list.append(line.strip())
+        
+        # id = np.arange(1233,step=1)
+        # id_list = [str(i) for i in id]
+        
         id_list = []
-        with cs.open(split_file, 'r') as f:
-            for line in f.readlines():
-                id_list.append(line.strip())
+        id_files = glob(self.data_root + "/texts/*.txt")
+        for i in id_files:
+            id = i.split("/")[-1].split(".")[0]
+            id_list.append(str(id))
 
         new_name_list = []
         length_list = []
         for name in tqdm(id_list):
             try:
                 motion = np.load(pjoin(self.motion_dir, name + '.npy'))
-                if (len(motion)) < min_motion_len or (len(motion) >= 200):
-                    continue
+                # print(len(motion))
+                # if (len(motion)) < min_motion_len or (len(motion) >= 200): #200
+                #     continue
                 text_data = []
                 flag = False
                 with cs.open(pjoin(self.text_dir, name + '.txt')) as f:
@@ -118,8 +141,11 @@ class Text2MotionDataset(data.Dataset):
                     new_name_list.append(name)
                     length_list.append(len(motion))
             except Exception as e:
-                # print(e)
+                print(e)
+                # print("hello")
                 pass
+
+        print(len(length_list), len(new_name_list))
 
         name_list, length_list = zip(*sorted(zip(new_name_list, length_list), key=lambda x: x[1]))
         self.mean = mean
@@ -200,9 +226,9 @@ class Text2MotionDataset(data.Dataset):
 
 def DATALoader(dataset_name, is_test,
                 batch_size, w_vectorizer,
-                num_workers = 8, unit_length = 4) : 
+                num_workers = 8, unit_length = 4, mode= 'eval') : 
     
-    val_loader = torch.utils.data.DataLoader(Text2MotionDataset(dataset_name, is_test, w_vectorizer, unit_length=unit_length),
+    val_loader = torch.utils.data.DataLoader(Text2MotionDataset(dataset_name, is_test, w_vectorizer, unit_length=unit_length, mode=mode),
                                               batch_size,
                                               shuffle = True,
                                               num_workers=num_workers,

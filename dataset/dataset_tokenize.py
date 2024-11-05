@@ -5,7 +5,7 @@ from os.path import join as pjoin
 import random
 import codecs as cs
 from tqdm import tqdm
-
+from glob import glob
 
 
 class VQMotionDataset(data.Dataset):
@@ -28,6 +28,17 @@ class VQMotionDataset(data.Dataset):
             dim_pose = 263
             self.meta_dir = 'checkpoints/t2m/VQVAEV3_CB1024_CMT_H1024_NRES3/meta'
             #kinematic_chain = paramUtil.t2m_kinematic_chain
+        elif dataset_name == 'mcs':
+            self.data_root = '/home/ubuntu/data/HumanML3D' + "/train"
+            self.motion_dir = pjoin(self.data_root, 'new_joints_vecs')
+            self.text_dir = pjoin(self.data_root, 'texts')
+            self.joints_num = 22
+            radius = 4
+            fps = 20
+            self.max_motion_length = 196
+            dim_pose = 263
+            self.meta_dir = '/home/ubuntu/data/HumanML3D'
+            #kinematic_chain = paramUtil.t2m_kinematic_chain
         elif dataset_name == 'kit':
             self.data_root = './dataset/KIT-ML'
             self.motion_dir = pjoin(self.data_root, 'new_joint_vecs')
@@ -42,35 +53,48 @@ class VQMotionDataset(data.Dataset):
         
         joints_num = self.joints_num
 
-        mean = np.load(pjoin(self.meta_dir, 'mean.npy'))
-        std = np.load(pjoin(self.meta_dir, 'std.npy'))
+        mean = np.load(pjoin(self.meta_dir, 'Mean.npy'))
+        std = np.load(pjoin(self.meta_dir, 'Std.npy'))
         
-        split_file = pjoin(self.data_root, 'train.txt')
+        # split_file = pjoin(self.data_root, 'train.txt')
         
         data_dict = {}
+        # id_list = []
+        # with cs.open(split_file, 'r') as f:
+        #     for line in f.readlines():
+        #         id_list.append(line.strip())
+        
+        # ids = np.arange(1233)
+        # id_list = [str(i) for i in ids]
+        
         id_list = []
-        with cs.open(split_file, 'r') as f:
-            for line in f.readlines():
-                id_list.append(line.strip())
+        id_files = glob(self.data_root + "/texts/*.txt")
+        for i in id_files:
+            id = i.split("/")[-1].split(".")[0]
+            id_list.append(str(id))
 
+        print(id_list)
         new_name_list = []
         length_list = []
         for name in tqdm(id_list):
             try:
+                # print(pjoin(self.motion_dir, name + '.npy'))
                 motion = np.load(pjoin(self.motion_dir, name + '.npy'))
-                if (len(motion)) < min_motion_len or (len(motion) >= 200):
-                    continue
+                # if (len(motion)) < min_motion_len or (len(motion) >= 200):
+                #     continue
 
                 data_dict[name] = {'motion': motion,
                                    'length': len(motion),
                                    'name': name}
                 new_name_list.append(name)
                 length_list.append(len(motion))
-            except:
+            except Exception as e:
                 # Some motion may not exist in KIT dataset
+                # print(name)
+                print(e)
                 pass
 
-
+        print(len(length_list))
         self.mean = mean
         self.std = std
         self.length_arr = np.array(length_list)

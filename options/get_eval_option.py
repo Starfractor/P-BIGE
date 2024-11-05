@@ -52,6 +52,8 @@ def get_opt(opt_path, device):
     opt.save_root = pjoin(opt.checkpoints_dir, opt.dataset_name, opt.name)
     opt.model_dir = pjoin(opt.save_root, 'model')
     opt.meta_dir = pjoin(opt.save_root, 'meta')
+    # opt.dataset_name = 'mcs'
+    print("dataset name", opt.dataset_name)
 
     if opt.dataset_name == 't2m':
         opt.data_root = './dataset/HumanML3D/'
@@ -62,6 +64,17 @@ def get_opt(opt_path, device):
         opt.max_motion_length = 196
         opt.max_motion_frame = 196
         opt.max_motion_token = 55
+
+    elif opt.dataset_name == 'mcs':
+        opt.data_root = '/home/ubuntu/data/HumanML3D'
+        opt.motion_dir = pjoin(opt.data_root, 'new_joints_vecs')
+        opt.text_dir = pjoin(opt.data_root, 'texts')
+        opt.joints_num = 22
+        opt.dim_pose = 263
+        opt.max_motion_length = 196
+        opt.max_motion_frame = 196
+        opt.max_motion_token = 55
+
     elif opt.dataset_name == 'kit':
         opt.data_root = './dataset/KIT-ML/'
         opt.motion_dir = pjoin(opt.data_root, 'new_joint_vecs')

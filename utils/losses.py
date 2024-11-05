@@ -20,7 +20,8 @@ class ReConsLoss(nn.Module):
         self.motion_dim = (nb_joints - 1) * 12 + 4 + 3 + 4
         
     def forward(self, motion_pred, motion_gt) : 
-        loss = self.Loss(motion_pred[..., : self.motion_dim], motion_gt[..., :self.motion_dim])
+        # loss = self.Loss(motion_pred[..., : self.motion_dim], motion_gt[..., :self.motion_dim])
+        loss = self.Loss(motion_pred, motion_gt)
         return loss
     
     def forward_vel(self, motion_pred, motion_gt) : 

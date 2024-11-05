@@ -7,7 +7,7 @@ import codecs as cs
 from tqdm import tqdm
 import utils.paramUtil as paramUtil
 from torch.utils.data._utils.collate import default_collate
-
+from glob import glob
 
 def collate_fn(batch):
     batch.sort(key=lambda x: x[3], reverse=True)
@@ -16,7 +16,7 @@ def collate_fn(batch):
 
 '''For use of training text-2-motion generative model'''
 class Text2MotionDataset(data.Dataset):
-    def __init__(self, dataset_name, feat_bias = 5, unit_length = 4, codebook_size = 1024, tokenizer_name=None):
+    def __init__(self, dataset_name, feat_bias = 5, unit_length = 4, codebook_size = 1024, tokenizer_name=None, mode = 'train'):
         
         self.max_length = 64
         self.pointer = 0
@@ -36,6 +36,16 @@ class Text2MotionDataset(data.Dataset):
             self.max_motion_length = 26 if unit_length == 8 else 51
             dim_pose = 263
             kinematic_chain = paramUtil.t2m_kinematic_chain
+        elif dataset_name == 'mcs':
+            self.data_root = '/home/ubuntu/data/HumanML3D' + "/" + mode
+            self.motion_dir = pjoin(self.data_root, 'new_joints_vecs')
+            self.text_dir = pjoin(self.data_root, 'texts')
+            self.joints_num = 22
+            radius = 4
+            fps = 20
+            self.max_motion_length = 26 if unit_length == 8 else 51
+            dim_pose = 263
+            kinematic_chain = paramUtil.t2m_kinematic_chain
         elif dataset_name == 'kit':
             self.data_root = './dataset/KIT-ML'
             self.motion_dir = pjoin(self.data_root, 'new_joint_vecs')
@@ -47,19 +57,30 @@ class Text2MotionDataset(data.Dataset):
             self.max_motion_length = 26 if unit_length == 8 else 51
             kinematic_chain = paramUtil.kit_kinematic_chain
 
-        split_file = pjoin(self.data_root, 'train.txt')
+        # split_file = pjoin(self.data_root, 'train.txt')
 
 
+        # id_list = []
+        # with cs.open(split_file, 'r') as f:
+        #     for line in f.readlines():
+        #         id_list.append(line.strip())
+
+        # ids = np.arange(1233)
+        # id_list = [str(i) for i in ids]
+        
         id_list = []
-        with cs.open(split_file, 'r') as f:
-            for line in f.readlines():
-                id_list.append(line.strip())
+        id_files = glob(self.data_root + "/texts/*.txt")
+        for i in id_files:
+            id = i.split("/")[-1].split(".")[0]
+            id_list.append(str(id))
 
+        print(id_list)
         new_name_list = []
         data_dict = {}
         for name in tqdm(id_list):
             try:
                 m_token_list = np.load(pjoin(self.data_root, tokenizer_name, '%s.npy'%name))
+                # print(name,m_token_list.shape)
 
                 # Read text
                 with cs.open(pjoin(self.text_dir, name + '.txt')) as f:
@@ -100,8 +121,10 @@ class Text2MotionDataset(data.Dataset):
                     data_dict[name] = {'m_token_list': m_token_list,
                                        'text':text_data}
                     new_name_list.append(name)
-            except:
+            except Exception as e:
+                # print(e)
                 pass
+
         self.data_dict = data_dict
         self.name_list = new_name_list
 
@@ -131,7 +154,11 @@ class Text2MotionDataset(data.Dataset):
         if m_tokens_len+1 < self.max_motion_length:
             m_tokens = np.concatenate([m_tokens, np.ones((1), dtype=int) * self.mot_end_idx, np.ones((self.max_motion_length-1-m_tokens_len), dtype=int) * self.mot_pad_idx], axis=0)
         else:
+            # m_tokens = np.concatenate([m_tokens, np.ones((1), dtype=int) * self.mot_end_idx], axis=0)
+            m_tokens = m_tokens[:self.max_motion_length-1]
             m_tokens = np.concatenate([m_tokens, np.ones((1), dtype=int) * self.mot_end_idx], axis=0)
+        
+        # print(m_tokens.shape)
 
         return caption, m_tokens.reshape(-1), m_tokens_len
 

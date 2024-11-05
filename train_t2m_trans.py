@@ -26,7 +26,7 @@ args = option_trans.get_args_parser()
 torch.manual_seed(args.seed)
 
 args.out_dir = os.path.join(args.out_dir, f'{args.exp_name}')
-args.vq_dir= os.path.join("./dataset/KIT-ML" if args.dataname == 'kit' else "./dataset/HumanML3D", f'{args.vq_name}')
+args.vq_dir= os.path.join("./dataset/KIT-ML" if args.dataname == 'kit' else "./dataset/HumanML3D/train", f'{args.vq_name}')
 os.makedirs(args.out_dir, exist_ok = True)
 os.makedirs(args.vq_dir, exist_ok = True)
 
@@ -40,6 +40,7 @@ train_loader_token = dataset_tokenize.DATALoader(args.dataname, 1, unit_length=2
 
 from utils.word_vectorizer import WordVectorizer
 w_vectorizer = WordVectorizer('./glove', 'our_vab')
+print("Hello dataname:",args.dataname)
 val_loader = dataset_TM_eval.DATALoader(args.dataname, False, 32, w_vectorizer)
 
 dataset_opt_path = 'checkpoints/kit/Comp_v6_KLD005/opt.txt' if args.dataname == 'kit' else 'checkpoints/t2m/Comp_v6_KLD005/opt.txt'
@@ -98,7 +99,7 @@ loss_ce = torch.nn.CrossEntropyLoss()
 nb_iter, avg_loss_cls, avg_acc = 0, 0., 0.
 right_num = 0
 nb_sample_train = 0
-
+print("Vq dir:", args.vq_dir)
 ##### ---- get code ---- #####
 for batch in train_loader_token:
     pose, name = batch
