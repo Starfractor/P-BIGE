@@ -1,4 +1,3 @@
-import os 
 import torch
 from torch.utils import data
 import numpy as np
@@ -9,32 +8,6 @@ from tqdm import tqdm
 from glob import glob
 import utils.paramUtil as paramUtil
 from torch.utils.data._utils.collate import default_collate
-import options.option_limo as option_limo
-
-############# ONLY Debugging, has to be removed.
-##### ---- Exp dirs ---- #####
-# args = option_limo.get_args_parser()
-# torch.manual_seed(args.seed)
-
-
-# args.out_dir = os.path.join(args.out_dir, f'{args.exp_name}')
-# os.makedirs(args.out_dir, exist_ok = True)
-
-action_to_desc = {
-        "bend and pull full" : 0,
-        "countermovement jump" : 1,
-        "left countermovement jump" : 2,
-        "left lunge and twist" : 3,
-        "left lunge and twist full" : 4,
-        "right countermovement jump" : 5,
-        "right lunge and twist" : 6,
-        "right lunge and twist full" : 7,
-        "right single leg squat" : 8,
-        "squat" : 9,
-        "bend and pull" : 10,
-        "left single leg squat" : 11,
-        "push up" : 12
-    }
 
 
 def collate_fn(batch):
@@ -42,10 +15,10 @@ def collate_fn(batch):
     return default_collate(batch)
 
 
-
 '''For use of training text-2-motion generative model'''
 class Text2MotionDataset(data.Dataset):
-    def __init__(self, dataset_name, is_test, w_vectorizer, feat_bias = 5, max_text_len = 20, unit_length = 4, mode = "eval",data_root=None):
+    def __init__(self, dataset_name, is_test, w_vectorizer, feat_bias = 5, max_text_len = 20, unit_length = 4, mode = "eval"):
+        
         self.max_length = 20
         self.pointer = 0
         self.dataset_name = dataset_name
@@ -67,14 +40,8 @@ class Text2MotionDataset(data.Dataset):
         
         elif dataset_name == 'mcs':
             self.data_root = '/home/ubuntu/data/HumanML3D' + "/" + mode
-            
-            if not os.path.isdir(self.data_root) and data_root is not None: 
-                self.data_root = pjoin(data_root,mode)  
-
-
             self.motion_dir = pjoin(self.data_root, 'new_joints_vecs')
             self.text_dir = pjoin(self.data_root, 'texts')
-            self.mcs_dir = pjoin(self.data_root, 'mcs')
             self.joints_num = 22
             radius = 4
             fps = 20
@@ -82,8 +49,6 @@ class Text2MotionDataset(data.Dataset):
             dim_pose = 263
             kinematic_chain = paramUtil.t2m_kinematic_chain
             self.meta_dir = '/home/ubuntu/data/HumanML3D'
-            if not os.path.isdir(self.meta_dir) and data_root is not None: 
-                self.meta_dir = data_root
 
         elif dataset_name == 'kit':
             self.data_root = './dataset/KIT-ML'
@@ -110,8 +75,6 @@ class Text2MotionDataset(data.Dataset):
 
         joints_num = self.joints_num
 
-        # non_failed_captions = [d.replace('category_','') for d in os.listdir(args.out_dir) if os.path.isdir(os.path.join(args.out_dir,d)) and 'category_' in d and len(os.listdir(os.path.join(args.out_dir,d)))]
-
         data_dict = {}
         # id_list = []
         # with cs.open(split_file, 'r') as f:
@@ -133,8 +96,8 @@ class Text2MotionDataset(data.Dataset):
             try:
                 motion = np.load(pjoin(self.motion_dir, name + '.npy'))
                 # print(len(motion))
-                if (len(motion)) < min_motion_len or (len(motion) >= 200): #200
-                    continue
+                # if (len(motion)) < min_motion_len or (len(motion) >= 200): #200
+                #     continue
                 text_data = []
                 flag = False
                 with cs.open(pjoin(self.text_dir, name + '.txt')) as f:
@@ -147,11 +110,6 @@ class Text2MotionDataset(data.Dataset):
                         to_tag = float(line_split[3])
                         f_tag = 0.0 if np.isnan(f_tag) else f_tag
                         to_tag = 0.0 if np.isnan(to_tag) else to_tag
-
-
-                        ############ TO BE FIXED ###############
-                        # if caption.replace(' ', '_') not in non_failed_captions: 
-                            # continue 
 
                         text_dict['caption'] = caption
                         text_dict['tokens'] = tokens
@@ -175,19 +133,11 @@ class Text2MotionDataset(data.Dataset):
                                 print(line_split)
                                 print(line_split[2], line_split[3], f_tag, to_tag, name)
                                 # break
-                               
-                try:
-                    with cs.open(pjoin(self.mcs_dir, name + '.txt')) as f:
-                        for line in f.readlines():
-                            mcs_score = int(line.strip())
-                except:
-                    mcs_score = -1
 
                 if flag:
                     data_dict[name] = {'motion': motion,
                                        'length': len(motion),
-                                       'text': text_data,
-                                       'mcs': mcs_score}
+                                       'text': text_data}
                     new_name_list.append(name)
                     length_list.append(len(motion))
             except Exception as e:
@@ -225,7 +175,7 @@ class Text2MotionDataset(data.Dataset):
         name = self.name_list[idx]
         data = self.data_dict[name]
         # data = self.data_dict[self.name_list[idx]]
-        motion, m_length, text_list, mcs_score = data['motion'], data['length'], data['text'], data['mcs']
+        motion, m_length, text_list = data['motion'], data['length'], data['text']
         # Randomly select a caption
         text_data = random.choice(text_list)
         caption, tokens = text_data['caption'], text_data['tokens']
@@ -269,16 +219,16 @@ class Text2MotionDataset(data.Dataset):
                                      np.zeros((self.max_motion_length - m_length, motion.shape[1]))
                                      ], axis=0)
 
-        return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, '_'.join(tokens), name, mcs_score
+        return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, '_'.join(tokens), name
 
 
 
 
 def DATALoader(dataset_name, is_test,
                 batch_size, w_vectorizer,
-                num_workers = 8, unit_length = 4,data_root=None,mode='eval'): 
+                num_workers = 8, unit_length = 4, mode= 'eval') : 
     
-    val_loader = torch.utils.data.DataLoader(Text2MotionDataset(dataset_name, is_test, w_vectorizer, unit_length=unit_length,data_root=data_root,mode=mode),
+    val_loader = torch.utils.data.DataLoader(Text2MotionDataset(dataset_name, is_test, w_vectorizer, unit_length=unit_length, mode=mode),
                                               batch_size,
                                               shuffle = True,
                                               num_workers=num_workers,

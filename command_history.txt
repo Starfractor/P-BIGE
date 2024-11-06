@@ -1,0 +1,140 @@
+ 1019  python VQ_Limo.py   --exp-name LIMO_Foot_all_median --out-dir output/     
+ 1020  nohup python VQ_Limo.py   --exp-name LIMO_Foot_all_median --out-dir output/  &    
+ 1022  nohup python VQ_Limo.py   --exp-name LIMO_Foot_sliding_median --out-dir output/  &    
+ 1032  python VQ_Limo.py   --exp-name LIMO_Foot_all_median --out-dir output/     
+ 1036  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.2-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.2-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1038  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.2-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.2-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1047  python VQ_eval.py   --exp-name LIMO_Foot_all_median --out-dir output/     
+ 1050  python VQ_eval.py   --exp-name LIMO_Foot_all_median --out-dir output/     
+ 1051  python VQ_eval.py   --exp-name LIMO_Foot_all --out-dir output/     
+ 1052  python VQ_eval.py   --exp-name LIMO_Foot_sliding --out-dir output/     
+ 1053  python VQ_eval.py   --exp-name LIMO_Foot --out-dir output/     
+ 1054  python VQ_eval.py   --exp-name LIMO_VQVAE_2 --out-dir output/
+ 1058  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth output/VQVAE_3/net_last.pth'
+ 1059  python VQ_eval.py   --exp-name LIMO_VQVAE_2 --out-dir output/
+ 1070  python VQ_Limo_eval.py   --exp-name LIMO_VQVAE_2 --out-dir output/
+ 1072  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth output/VQVAE_3/net_last.pth'
+ 1077  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth ../digital-coach-anwesh/output/VQVAE_3/net_best_fid.pth '
+ 1081  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth ../digital-coach-anwesh/output/VQVAE_3/net_best_fid.pth '
+ 1089  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth ../digital-coach-anwesh/output/VQVAE_3/net_best_fid.pth \n'
+ 1091  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth ../digital-coach-anwesh/output/VQVAE_3/net_best_fid.pth \n'
+ 1093  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth ../digital-coach-anwesh/output/VQVAE_3/net_best_fid.pth \n'
+ 1095  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth ../digital-coach-anwesh/output/VQVAE_3/net_best_fid.pth \n'
+ 1096  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth ../digital-coach-anwesh/output/VQVAE_3/net_best_fid.pth \n\n'
+ 1097  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth ../digital-coach-anwesh/output/VQVAE_3/net_best_fid.pth '
+ 1098  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth ../digital-coach-anwesh/output/VQVAE/net_best_fid.pth '
+ 1099  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth ../digital-coach-anwesh/output/VQVAE_2/net_best_fid.pth '
+ 1106  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth output/VQVAE_3/net_last.pth'
+ 1107  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth output/VQVAE_2/net_best_fid.pth '
+ 1108  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth output/VQVAE_3/net_best_fid.pth '
+ 1109  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth output/VQVAE_2/net_best_fid.pth '
+ 1110  eval -- $'python3 VQ_eval.py \\\n--batch-size 256 \\\n--lr 2e-4 \\\n--total-iter 300000 \\\n--lr-scheduler 200000 \\\n--nb-code 512 \\\n--down-t 2 \\\n--depth 3 \\\n--dilation-growth-rate 3 \\\n--out-dir output \\\n--dataname mcs \\\n--vq-act relu \\\n--quantizer ema_reset \\\n--loss-vel 0.5 \\\n--recons-loss l1_smooth \\\n--exp-name VQVAE_3 \\\n--resume-pth output/VQVAE_3/net_best_fid.pth '
+ 1112  nohup python VQ_Limo.py   --exp-name LIMO_VQVAE_1 --out-dir output/  --vq-name ./output/VQVAE/net_best_fid.pth  & 
+ 1114  nohup python VQ_Limo.py   --exp-name LIMO_VQVAE_2 --out-dir output/  --vq-name ./output/VQVAE_2/net_best_fid.pth  & 
+ 1117  nohup python VQ_Limo.py   --exp-name LIMO_VQVAE_2 --out-dir output/  --vq-name ./output/VQVAE_2/net_best_fid.pth  & 
+ 1119  nohup python VQ_Limo.py   --exp-name LIMO_VQVAE_3 --out-dir output/  --vq-name ./output/VQVAE_3/net_best_fid.pth  & 
+ 1148  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.2-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.2-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1157  python 
+ 1259  conda create -n opencap-processing python=3.11
+ 1262  python 
+ 1266  python -m pip install -r requirements.txt
+ 1267  python createAuthenticationEnvFile.py
+ 1268  python example
+ 1269  python example.py 
+ 1270  python example_kinetics.py 
+ 1273  python example_kinetics.py 
+ 1288  python example_walking_opensimAD.py 
+ 1289  python
+ 1293  python
+ 1295  python example_walking_opensimAD.py 
+ 1300  python example_walking_opensimAD.py 
+ 1302  python example_walking_opensimAD.py 
+ 1313  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.2-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.2-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1327  python example_walking_opensimAD.py 
+ 1339  python example_walking_opensimAD.py | tee output-2.txt 
+ 1341  python example_walking_opensimAD.py | tee output-2.txt 
+ 1345  python example_walking_opensimAD.py 
+ 1372  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1382  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1383  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1412  /bin/python2 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1413  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1414  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1415  /bin/python2 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1419  python3 train_vq.py --batch-size 256 --lr 2e-4 --total-iter 300000 --lr-scheduler 200000 --nb-code 512 --down-t 2 --depth 3 --dilation-growth-rate 3 --out-dir output --dataname mcs --vq-act relu --quantizer ema_reset --loss-vel 0.5 --recons-loss l1_smooth --exp-name VQVAE3
+ 1424  /bin/python2 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1426  /bin/python2 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1427  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1445  /bin/python2 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1446  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1489  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1490  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1491  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1494  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1545  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1546  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1549  python train_vq.py 
+ 1551  cat ~/.conda/envs/T2M-GPT/lib/python3.8/site-packages/nimblephysics-0.10.43.dist-info/RECORD 
+ 1553  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.12.3-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1558  python example_walking_opensimAD.py 
+ 1560  python example_walking_opensimAD.py 
+ 1565  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1627  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1657  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1659  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1667  python quickstart.py 
+ 1670  python quickstart.py 
+ 1672  python quickstart.py 
+ 1676  python quickstart.py 
+ 1677  sudo apt install python3-scipy 
+ 1682  python3.8 -m venv skel_venv
+ 1683  python3 --version
+ 1684  python3.10 -m venv skel_venv
+ 1689  python quickstart.py 
+ 1692  python3 train_vq.py --batch-size 128 --lr 2e-4 --total-iter 300000 --lr-scheduler 200000 --nb-code 512 --down-t 2 --depth 3 --dilation-growth-rate 3 --out-dir output --dataname mcs --vq-act relu --quantizer ema_reset --loss-vel 
+ 1697  python3 train_vq.py --batch-size 128 --lr 2e-4 --total-iter 300000 --lr-scheduler 200000 --nb-code 512 --down-t 2 --depth 3 --dilation-growth-rate 3 --out-dir output --dataname mcs --vq-act relu --quantizer ema_reset --loss-vel 
+ 1699  python3 train_vq.py --batch-size 128 --lr 2e-4 --total-iter 300000 --lr-scheduler 200000 --nb-code 512 --down-t 2 --depth 3 --dilation-growth-rate 3 --out-dir output --dataname mcs --vq-act relu --quantizer ema_reset --loss-vel 
+ 1701  python3 train_vq.py --batch-size 128 --lr 2e-4 --total-iter 300000 --lr-scheduler 200000 --nb-code 512 --down-t 2 --depth 3 --dilation-growth-rate 3 --out-dir output --dataname mcs --vq-act relu --quantizer ema_reset --loss-vel 
+ 1703  python3 train_vq.py --batch-size 128 --lr 2e-4 --total-iter 300000 --lr-scheduler 200000 --nb-code 512 --down-t 2 --depth 3 --dilation-growth-rate 3 --out-dir output --dataname mcs --vq-act relu --quantizer ema_reset --loss-vel 
+ 1704  python3 train_vq.py --batch-size 128 --lr 2e-4 --total-iter 300000 --lr-scheduler 200000 --nb-code 512 --down-t 2 --depth 3 --dilation-growth-rate 3 --out-dir output --dataname mcs --vq-act relu --quantizer ema_reset 
+ 1706  python3 train_vq.py --batch-size 128 --lr 2e-4 --total-iter 300000 --lr-scheduler 200000 --nb-code 512 --down-t 2 --depth 3 --dilation-growth-rate 3 --out-dir output --dataname mcs --vq-act relu --quantizer ema_reset 
+ 1708  python quickstart.py 
+ 1709  python examples/skel_poses.py --gender male
+ 1716  python examples/skel_poses.py --gender male
+ 1717  python examples/skel_rigging.py --gender male
+ 1718  python examples/skel_poses.py --gender male
+ 1720  python scripts/setup_smpl.py /path/to/SMPL_python_v.1.1.0.zip
+ 1724  python examples/align_to_SMPL_seq.py examples/samples/amass_seq/CMU_01_01.npz -D 
+ 1739  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1740  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1741  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1746  conda install -c conda-forge python-kaleido
+ 1751  python 
+ 1754  conda install -c conda-forge python-kaleido
+ 1808  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1814  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.0-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1849  python VQ_Limo
+ 1850  python VQ_Limo.py 
+ 1852  python VQ_Limo.py 
+ 1855  python VQ_Limo
+ 1856  python VQ_Limo.py 
+ 1873  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.1-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.1-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1878  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.1-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.1-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1899  python write_mot.py 
+ 1901  python write_mot.py 
+ 1905  python VQ_Limo.py   --exp-name LIMO_VQVAE_3 --out-dir output/  --vq-name ./output/VQVAE_3/net_best_fid.pth  
+ 1912  python VQ_Limo.py   --exp-name LIMO_VQVAE_3 --out-dir output/  --vq-name ./output/VQVAE_3/net_best_fid.pth  
+ 1916  python VQ_Limo.py   --exp-name LIMO_VQVAE_3 --out-dir output/  --vq-name ./output/VQVAE_3/net_best_fid.pth  
+ 1923  python VQ_Limo.py   --exp-name LIMO_VQVAE_3 --out-dir output/  --vq-name ./output/VQVAE_3/net_best_fid.pth  
+ 1926  python /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.1-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.1-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1941  /bin/python3 /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.1-linux-x64/python_files/printEnvVariablesToFile.py /home/ubuntu/.vscode-server/extensions/ms-python.python-2024.14.1-linux-x64/python_files/deactivate/bash/envVars.txt
+ 1953  python write_mot.py 
+ 1955  python write_mot.py 
+ 1959  python 
+ 1960  python write_mot.py 
+ 1962  python write_mot.py 
+ 1964  python write_mot.py 
+ 1988  python write_mot.py 
+ 2005  history | grep python 
+ 2006  history | grep python | grep py
+ 2007  history | grep python | grep py | tee command_history.txt

@@ -81,7 +81,8 @@ class QuantizeEMAReset(nn.Module):
     def quantize(self, x):
         # Calculate latent code x_l
         k_w = self.codebook.t()
-        distance = torch.sum(x ** 2, dim=-1, keepdim=True) - 2 * torch.matmul(x, k_w) + torch.sum(k_w ** 2, dim=0,keepdim=True)  # (N * L, b)
+        distance = torch.sum(x ** 2, dim=-1, keepdim=True) - 2 * torch.matmul(x, k_w) + torch.sum(k_w ** 2, dim=0,
+                                                                                            keepdim=True)  # (N * L, b)
         _, code_idx = torch.min(distance, dim=-1)
         return code_idx
 
@@ -111,7 +112,7 @@ class QuantizeEMAReset(nn.Module):
             perplexity = self.compute_perplexity(code_idx)
         
         # Loss
-        commit_loss = F.mse_loss(x, x_d.detach()) #, reduction='none')
+        commit_loss = F.mse_loss(x, x_d.detach())
 
         # Passthrough
         x_d = x + (x_d - x).detach()
@@ -401,7 +402,7 @@ class QuantizeEMA(nn.Module):
             perplexity = self.compute_perplexity(code_idx)
         
         # Loss
-        commit_loss = F.mse_loss(x, x_d.detach(), reduce='none')
+        commit_loss = F.mse_loss(x, x_d.detach())
 
         # Passthrough
         x_d = x + (x_d - x).detach()

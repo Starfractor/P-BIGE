@@ -1,8 +1,6 @@
 import os
 import json
-
 # from osim_sequence import OSIMSequence,load_osim
-
 import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
@@ -12,7 +10,7 @@ import models.vqvae as vqvae
 import utils.losses as losses 
 import options.option_vq as option_vq
 import utils.utils_model as utils_model
-from dataset import dataset_opencap, dataset_TM_eval
+from dataset import dataset_MOT_MCS, dataset_TM_eval
 import utils.eval_trans as eval_trans
 from options.get_eval_option import get_opt
 from models.evaluator_wrapper import EvaluatorModelWrapper
@@ -29,6 +27,41 @@ def update_lr_warm_up(optimizer, nb_iter, warm_up_iter, lr):
         param_group["lr"] = current_lr
 
     return optimizer, current_lr
+
+def get_foot_losses(motion, y_translation=0.0,feet_threshold=0.01):
+    # y_translation = 0.0
+    min_height, idx = motion[..., 1].min(dim=-1)
+
+    # y_translation = -min_height.median() # Change reference to median  (Other set of experiments determine this. See paper)
+
+    # print(min_height,idx,motion[..., 1].shape)
+    min_height = min_height + y_translation
+    pn = -torch.minimum(min_height, torch.zeros_like(min_height))  # penetration
+    pn[pn < feet_threshold] = 0.0
+    fl = torch.maximum(min_height, torch.zeros_like(min_height))  # float
+    fl[fl < feet_threshold] = 0.0
+    bs, t = idx.shape
+
+    I = torch.arange(bs).view(bs, 1).expand(-1, t-1).long()
+    J = torch.arange(t-1).view(1, t-1).expand(bs, -1).long()
+    J_next = J + 1
+    feet_motion = motion[I, J, idx[:, :-1]]
+    feet_motion_next = motion[I, J_next, idx[:, :-1]]
+    sk = torch.norm(feet_motion - feet_motion_next, dim=-1)
+    contact = fl[:, :t] < feet_threshold
+
+    sk = sk[contact[:, :-1]]  # skating
+    # action: measure the continuity between frames
+    vel = motion[:, 1:] - motion[:, :-1]
+    acc = vel[:, 1:] - vel[:, :-1]
+    acc = torch.norm(acc, dim=-1)
+    # all losses
+    loss_pn = pn[:, :t].view(-1)
+    loss_fl = fl[:, :t].view(-1)
+    loss_sk = sk.view(-1)
+    metr_act = acc[:, :t].view(-1)
+
+    return loss_pn.sum()/bs, loss_fl.sum()/bs, loss_sk.sum()/bs
 
 ##### ---- Exp dirs ---- #####
 args = option_vq.get_args_parser()
@@ -59,12 +92,12 @@ eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
 
 
 ##### ---- Dataloader ---- #####
-train_loader = dataset_opencap.DATALoader(args.dataname,
+train_loader = dataset_MOT_MCS.DATALoader(args.dataname,
                                         args.batch_size,
                                         window_size=args.window_size,
                                         unit_length=2**args.down_t)
 
-train_loader_iter = dataset_opencap.cycle(train_loader)
+train_loader_iter = dataset_MOT_MCS.cycle(train_loader)
 
 val_loader = dataset_TM_eval.DATALoader(args.dataname, False,
                                         32,
@@ -93,14 +126,14 @@ net.train()
 net.cuda()
 
 ##### ---- Optimizer & Scheduler ---- #####
-optimizer = optim.Adam(net.parameters(), lr=args.lr, betas=(0.9, 0.99), weight_decay=args.weight_decay)
+optimizer = optim.AdamW(net.parameters(), lr=args.lr, betas=(0.9, 0.99), weight_decay=args.weight_decay)
 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_scheduler, gamma=args.gamma)
   
 
 Loss = losses.ReConsLoss(args.recons_loss, args.nb_joints)
 
 ##### ------ warm-up ------- #####
-avg_recons, avg_perplexity, avg_commit = 0., 0., 0.
+avg_recons, avg_perplexity, avg_commit, avg_temporal = 0., 0., 0., 0.
 
 for nb_iter in range(1, args.warm_up_iter):
     
@@ -112,32 +145,47 @@ for nb_iter in range(1, args.warm_up_iter):
     pred_motion, loss_commit, perplexity = net(gt_motion)
     loss_motion = Loss(pred_motion, gt_motion)
     
+    loss_temp = torch.mean((pred_motion[:,1:,:]-pred_motion[:,:-1,:])**2)
     
-    # Sampling for classifier guidance    
-    # wts = get_classifier_logits(gt_motion, labels, classifier_model)
-    # loss_motion = (loss_motion * wts.view(256,1,1)).mean()
-    loss_motion = loss_motion.mean()
-
-    loss = loss_motion + args.commit * loss_commit  
+    # loss_vel = Loss.forward_vel(pred_motion, gt_motion)
+    # loss_pn, loss_fl, loss_sk = get_foot_losses(pred_motion)
+    # print(loss_pn, loss_fl, loss_sk)
     
-
+    # # hip flexion 7, 15
+    # hip_flexion_l = -pred_motion[:,:,7].max(dim=1).values.mean()
+    # hip_flexion_r = -pred_motion[:,:,15].max(dim=1).values.mean()
+    # # knee angle 10, 18
+    # knee_angle_l = -pred_motion[:,:,10].max(dim=1).values.mean()
+    # knee_angle_r = -pred_motion[:,:,18].max(dim=1).values.mean()
+    # # ankle angle 12, 20
+    # ankle_angle_l = -pred_motion[:,:,12].max(dim=1).values.mean()
+    # ankle_angle_r = -pred_motion[:,:,20].max(dim=1).values.mean()
+    
+    # print(hip_flexion_l, hip_flexion_r, knee_angle_l, knee_angle_r, ankle_angle_l, ankle_angle_r)
+    
+    loss = loss_motion + args.commit * loss_commit + 0.5 * loss_temp #+ args.loss_vel * loss_vel 
+    
+    optimizer.zero_grad()
+    loss.backward()
     optimizer.step()
 
     avg_recons += loss_motion.item()
     avg_perplexity += perplexity.item()
     avg_commit += loss_commit.item()
+    avg_temporal += loss_temp.item()
     
     if nb_iter % args.print_iter ==  0 :
         avg_recons /= args.print_iter
         avg_perplexity /= args.print_iter
         avg_commit /= args.print_iter
+        avg_temporal /= args.print_iter
         
-        logger.info(f"Warmup. Iter {nb_iter} :  lr {current_lr:.5f} \t Commit. {avg_commit:.5f} \t PPL. {avg_perplexity:.2f} \t Recons.  {avg_recons:.5f}")
+        logger.info(f"Warmup. Iter {nb_iter} :  lr {current_lr:.5f} \t Commit. {avg_commit:.5f} \t PPL. {avg_perplexity:.2f} \t Recons.  {avg_recons:.5f} \t Temporal. {avg_temporal:.5f}")
         
-        avg_recons, avg_perplexity, avg_commit = 0., 0., 0.
+        avg_recons, avg_perplexity, avg_commit, avg_temporal = 0., 0., 0., 0.
 
 ##### ---- Training ---- #####
-avg_recons, avg_perplexity, avg_commit = 0., 0., 0.
+avg_recons, avg_perplexity, avg_commit, avg_temporal = 0., 0., 0., 0.
 torch.save({'net' : net.state_dict()}, os.path.join(args.out_dir, 'warmup.pth'))
 # best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, 0, best_fid=1000, best_iter=0, best_div=100, best_top1=0, best_top2=0, best_top3=0, best_matching=100, eval_wrapper=eval_wrapper)
 
@@ -148,16 +196,12 @@ for nb_iter in range(1, args.total_iter + 1):
     
     pred_motion, loss_commit, perplexity = net(gt_motion)
     loss_motion = Loss(pred_motion, gt_motion)
-    
-    # Sampling for classifier guidance    
-    # wts = get_classifier_logits(gt_motion, labels, classifier_model)
-    # loss_motion = (loss_motion * wts.view(256,1,1)).mean()
-    loss_motion = loss_motion.mean()
-    
+    loss_temp = torch.mean((pred_motion[:,1:,:]-pred_motion[:,:-1,:])**2)
+    # loss_vel = Loss.forward_vel(pred_motion, gt_motion)
     # loss_pn, loss_fl, loss_sk = get_foot_losses(pred_motion)
     # print(loss_pn, loss_fl, loss_sk)
     
-    loss = loss_motion + args.commit * loss_commit 
+    loss = loss_motion + args.commit * loss_commit + 0.5 * loss_temp #+ args.loss_vel * loss_vel # Need to remove/change loss_vel since its not SMPL
     
     optimizer.zero_grad()
     loss.backward()
@@ -167,17 +211,19 @@ for nb_iter in range(1, args.total_iter + 1):
     avg_recons += loss_motion.item()
     avg_perplexity += perplexity.item()
     avg_commit += loss_commit.item()
+    avg_temporal += loss_temp.item()
     
     if nb_iter % args.print_iter ==  0 :
         avg_recons /= args.print_iter
         avg_perplexity /= args.print_iter
         avg_commit /= args.print_iter
+        avg_temporal /= args.print_iter
         
         writer.add_scalar('./Train/L1', avg_recons, nb_iter)
         writer.add_scalar('./Train/PPL', avg_perplexity, nb_iter)
         writer.add_scalar('./Train/Commit', avg_commit, nb_iter)
         
-        logger.info(f"Train. Iter {nb_iter} : \t Commit. {avg_commit:.5f} \t PPL. {avg_perplexity:.2f} \t Recons.  {avg_recons:.5f}")
+        logger.info(f"Train. Iter {nb_iter} : \t Commit. {avg_commit:.5f} \t PPL. {avg_perplexity:.2f} \t Recons.  {avg_recons:.5f} \t Temporal. {avg_temporal:.5f}")
         
         avg_recons, avg_perplexity, avg_commit = 0., 0., 0.,
     

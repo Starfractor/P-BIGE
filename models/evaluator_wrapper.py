@@ -36,7 +36,7 @@ class EvaluatorModelWrapper(object):
         elif opt.dataset_name == 'kit':
             opt.dim_pose = 251
         elif opt.dataset_name == "mcs":
-            opt.dim_pose = 263
+            opt.dim_pose = 36 #263
         else:
             raise KeyError('Dataset not Recognized!!!')
 
