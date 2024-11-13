@@ -39,7 +39,8 @@ def load_osim(osim_path, geometry_path, ignore_geometry=False):
             os.symlink(os.path.join(geometry_path, file), os.path.join(os.path.dirname(osim_path), 'Geometry', file))
     
 
-        
+    
+    print("Geometry Path",geometry_path)
 
 
     # Create a tmp folder
@@ -92,8 +93,11 @@ class OSIMSequence():
         self._render_kwargs = kwargs
 
         # The node names of the skeleton model, the associated mesh and the template indices
-        self.node_names = [n.getName() for n in osim.skeleton.getBodyNodes()]
+        self.node_names = [osim.skeleton.getBodyNode(i).getName() for i in range(osim.skeleton.getNumBodyNodes())]
         
+        print("Node Names",self.node_names)
+
+
         self.meshes_dict = {}
         self.indices_dict = {}
         self.generate_meshes_dict() # Populate self.meshes_dict and self.indices_dict
@@ -535,7 +539,7 @@ class OSIMRetargetter:
         #         best_error = err
         #         best_error_timestep = t
 
-        self.osim = OSIMSequence.a_pose()
+        # self.osim = OSIMSequence.a_pose()
 
         self.osim.motion = mot_data
         self.osim.n_frames = mot_data.shape[0]
