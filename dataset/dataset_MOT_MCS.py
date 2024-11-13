@@ -1,3 +1,4 @@
+import os
 import torch
 from torch.utils import data
 import numpy as np
@@ -7,6 +8,7 @@ import codecs as cs
 from tqdm import tqdm
 from glob import glob
 
+SEGMENTATION_DIR = '/data/panini/MCS_DATA/squat-segmentation-data'
 
 class VQMotionDataset(data.Dataset):
     def __init__(self, dataset_name, window_size = 64, unit_length = 4, mode = 'train'):
@@ -19,16 +21,45 @@ class VQMotionDataset(data.Dataset):
             self.max_motion_length = 196 # Maximum length of sequence, change this for different lengths
             self.meta_dir = '/home/ubuntu/data/HumanML3D'
         
-        self.file_list = glob("/home/ubuntu/data/opencap-processing/Data/*/OpenSimData/Kinematics/*.mot")
+        self.file_list = glob("/home/ubuntu/data/MCS_DATA/Data/*/OpenSimData/Kinematics/*.mot")
         self.data = []
         self.lengths = []
         self.names = []
         self.mode = mode
+        self.segments = []
         
         for file in tqdm(self.file_list):
+
             tmp_name = file.split('/')[-1]
             if "sqt" not in tmp_name and "SQT" not in tmp_name and "Sqt" not in tmp_name:
                 continue
+
+            mot_file_name = os.path.abspath(file).split('/')[-1].replace('.mot','') 
+            subject_id = os.path.abspath(file).split('/')[-4]
+            
+            segments_data = np.load(os.path.join(SEGMENTATION_DIR, subject_id + '.npy'),allow_pickle=True).item()
+            
+            # Hard constrains on what will be used as test data. It must have segmentation present
+            trial_details = mot_file_name.split('_')
+            if len(trial_details) < 3: # Not a valid trial
+                # print(f"Skipping {file}. No segmentation found")
+                continue
+            
+            
+            if trial_details[0] not in segments_data.keys(): # Not a valid trial
+                print(f"Skipping {file}. Trial does not have segmentation. {trial_details}")
+                continue
+            
+            if 'segment' != trial_details[1] and not trial_details[2].isdigit(): # Not a valid trial
+                print(f"Skipping {file}. segment not middle keyword. {trial_details}")
+                continue
+            
+            if len(segments_data[trial_details[0]]) < int(trial_details[-1]) and int(trial_details[-1]) > 0 : # Not a valid trial
+                print(f"Skipping {file}. Trial does not have segmentation. {trial_details}")
+                continue
+            
+            segment = segments_data[trial_details[0]][int(trial_details[2])-1]
+                  
             with open(file,'r') as f:
                 file_data = f.read().split('\n')
                 # print(file_data)
@@ -61,13 +92,27 @@ class VQMotionDataset(data.Dataset):
                             rows = [float(row) for row in rows]
                             data['poses'].append(rows)
                         read_rows += 1
-            if data['nRows'] < self.window_size:
+            data['poses'] = np.array(data['poses'])[:,1:] # Change to remove time
+            
+
+            if segment[1] - segment[0] < self.window_size:
+                print(f"Skipping {file}. Segment {segment} is too small")
+                continue      
+            
+            
+            if segment[0] > data['nRows'] or segment[1] > data['nRows']:
+                print(f"Segment {segment} is out of bounds for {file}")
                 continue
-            data['poses'] = np.array(data['poses'])[:,1:] # Change to remove time 
+
+            nRows = segment[1] - segment[0] + 1            
+            poses = data['poses'][segment[0]:segment[1]+1]
+            
+            # Based on manual segmentation select time frames 
             # print(data['poses'].shape)
-            self.data.append(data['poses'])
-            self.lengths.append(data['nRows'])
+            self.data.append(poses)
+            self.lengths.append(nRows)
             self.names.append(file)
+            self.segments.append(segment)
         
         print("Total number of motions {}".format(len(self.data)))
 

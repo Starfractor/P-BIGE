@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import nimblephysics as nimble 
 from classifiers import get_classifier
-from write_mot import write_mot33
+from write_mot import write_mot33, write_mot35
 
 
 def write_mot(path, data, framerate=60):
@@ -313,6 +313,9 @@ def get_proximity_loss(z, embedding, reduce = True, chunk_size = 1000):
     return proximity_loss, min_indices
     
 def get_optimized_z(category=9,initialization='mean', device='cuda'): 
+    print("Optimizing for category:",category)
+    print("Initialization:", embedding_dict)
+    
     if initialization == 'random':
         # z = np.random.rand(args.batch_size, args.nb_code, args.seq_len).astype(np.float32)
         # z = torch.from_numpy(z).to(device)
@@ -362,28 +365,41 @@ def get_optimized_z(category=9,initialization='mean', device='cuda'):
     
         loss_temp = torch.mean((pred_motion[:,1:,:]-pred_motion[:,:-1,:])**2)
 
-        foot_loss = 0
+        # Reduce jitter in the translation
+        loss_temp_trans = torch.mean((pred_motion[:,1:,[3,5]]-pred_motion[:,:-1,[3,5]])**2)
+        
+
+        foot_loss = torch.tensor([0.0],device=device)
         indices_to_keep = [i for i in range(pred_motion.shape[2]) if i not in [10,18]]
         motion = pred_motion[:,:,indices_to_keep]
         for i in range(pred_motion.shape[0]):
             # m = motion[i]
             # m_tensor = torch.tensor(m, dtype=torch.float32, device=device, requires_grad=True)
             m_tensor = pred_motion[i,:,indices_to_keep]
-            base_point = GetLowestPointLayer.apply(osim.skeleton, m_tensor[0].cpu())
-            for j in range(1,pred_motion.shape[1]):
-                x = GetLowestPointLayer.apply(osim.skeleton, m_tensor[j].cpu())
-                foot_loss += (x-base_point)**2
+            # for j in range(1,pred_motion.shape[1],3):
+            for rand_j in range(1,int(epoch*10/3000)):
+                j = random.randint(1,pred_motion.shape[1]-1)
+                nimble_input_motion = m_tensor[j]
+                nimble_input_motion[6:] = torch.deg2rad(nimble_input_motion[6:])
+                nimble_input_motion[:3] = 0 # Set pelvis to 0
+                nimble_input_motion = nimble_input_motion.cpu()
+                x = GetLowestPointLayer.apply(osim.skeleton, nimble_input_motion).to(device)
+                foot_loss += x**2
 
         # loss = loss_proximity * 0.0001
-        foot_loss = foot_loss.to(device)
-        loss = loss_proximity * 0.001 + foot_loss * 0.001 + 0.005*loss_temp
+        # foot_loss = foot_loss.to(device)
+        # foot_loss = torch.tensor(0,device=device)
+        if epoch < 500: # Early start for proximity loss 
+            loss = loss_proximity * 0.001
+        else:
+            loss = loss_proximity * 0.001 + foot_loss * 0.01 + 0.5*loss_temp + 5*loss_temp_trans
         # loss = foot_loss*0.01
         
         loss.backward()
         # print("Z grad",z.grad)
         optimizer.step()
         if epoch % 10 == 0:
-            print("Epoch:", epoch, "Loss:", loss.item(), "Penetration:", foot_loss.item()*0.001, "Temporal Loss:", 0.005*loss_temp.item(), "Proximity Loss:", 0.001*loss_proximity.item())#"Difference:", torch.norm(z-old_z))
+            print("Epoch:", epoch, "Loss:", loss.item(), "Penetration:", foot_loss.item()*0.01, "Temporal Loss:", 0.5*loss_temp.item(), "Proximity Loss:", 0.001*loss_proximity.item(), "Trans Temporal:", 0.5*loss_temp_trans)#"Difference:", torch.norm(z-old_z))
             
         if epoch % 1000 == 0:
             os.makedirs("save_LIMO/normal_subject",exist_ok=True)
@@ -419,6 +435,7 @@ def get_optimized_z(category=9,initialization='mean', device='cuda'):
     return z,loss
 
 i = 9
+
 if i == 9:
     # Added to run multiple iterations of LIMO for evaluation purposes
     for run in range(args.num_runs):
@@ -428,6 +445,8 @@ if i == 9:
         category_name = "squat"
         # save_folder = os.path.join("latents",'category_'+category_name)
         save_folder = os.path.join("latents_subject","run_"+str(run))
+        save_folder_mot = os.path.join(args.out_dir, "mot_visualization", "latents_subject_" + "run_"+str(run))
+        
         if not os.path.exists(save_folder):
             os.makedirs(save_folder)
         
@@ -442,7 +461,11 @@ if i == 9:
             file_path = os.path.join(save_folder,f'entry_{j}.npy')
             print(f"Saving results in file:{file_path}")
             np.save(file_path, entry.cpu().detach().numpy())
-
+            
+            pred_motion_saved = np.load(file_path)
+            mot_file_path = os.path.join(save_folder_mot,f'entry_{j}.mot')
+            write_mot35(mot_file_path, pred_motion_saved)
+            print(f"Saving mot in file:{mot_file_path}")
         # np.save(os.path.join(args.out_dir,f'scores_{category_name}.npy'), score.cpu().detach().numpy())
 
         del z 

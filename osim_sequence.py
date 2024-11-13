@@ -461,7 +461,6 @@ class GetLowestPointLayer(torch.autograd.Function):
         originalPosition = skel.getPositions()
 
         current_position = position.detach().numpy()
-        current_position = np.deg2rad(current_position)
 
         # Set positions
         skel.setPositions(current_position)

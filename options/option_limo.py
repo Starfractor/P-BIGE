@@ -12,7 +12,7 @@ def get_args_parser():
     parser.add_argument('--min-samples', default=10, type=int, help='number of latents to save')
     parser.add_argument('--fps', default=[20], nargs="+", type=int, help='frames per second')
     parser.add_argument('--seq-len', type=int, default=128, help='training motion length')
-    parser.add_argument('--window-size', type=int, default=512)
+    parser.add_argument('--window-size', type=int, default=64)
     parser.add_argument('--num-runs', default = 5, type=int, help='number of runs')
     
     ## optimization 
@@ -78,7 +78,7 @@ def get_args_parser():
     parser.add_argument('--feet-threshold', type=float, default=0.01, help='Hyperparameter to calculate ground whether joint in contact with the ground')
     parser.add_argument('--mcs', type = int, default = None, help='specify mcs score')
     
-    parser.add_argument('--subject', type = str, default = "/data/panini/MCS_DATA/Data/349e4383-da38-4138-8371-9a5fed63a56a/", help='Subject Info in opencap format')
+    parser.add_argument('--subject', type = str, default = "/data/panini/MCS_DATA/Data/000cffd9-e154-4ce5-a075-1b4e1fd66201/", help='Subject Info in opencap format')
 
 
     return parser.parse_args()
