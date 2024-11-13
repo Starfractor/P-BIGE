@@ -10,7 +10,7 @@ import models.vqvae as vqvae
 import utils.losses as losses 
 import options.option_vq as option_vq
 import utils.utils_model as utils_model
-from dataset import dataset_MOT_MCS, dataset_TM_eval
+from dataset import dataset_MOT_MCS, dataset_TM_eval, dataset_MOT_segmented
 import utils.eval_trans as eval_trans
 from options.get_eval_option import get_opt
 from models.evaluator_wrapper import EvaluatorModelWrapper
@@ -18,6 +18,7 @@ import warnings
 warnings.filterwarnings('ignore')
 from utils.word_vectorizer import WordVectorizer
 # import nimblephysics as nimble
+import deepspeed
 
 
 def update_lr_warm_up(optimizer, nb_iter, warm_up_iter, lr):
@@ -66,6 +67,7 @@ def get_foot_losses(motion, y_translation=0.0,feet_threshold=0.01):
 ##### ---- Exp dirs ---- #####
 args = option_vq.get_args_parser()
 torch.manual_seed(args.seed)
+torch.cuda.set_device(args.local_rank)
 
 args.out_dir = os.path.join(args.out_dir, f'{args.exp_name}')
 os.makedirs(args.out_dir, exist_ok = True)
@@ -92,12 +94,18 @@ eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
 
 
 ##### ---- Dataloader ---- #####
-train_loader = dataset_MOT_MCS.DATALoader(args.dataname,
+# train_loader = dataset_MOT_MCS.DATALoader(args.dataname,
+#                                         args.batch_size,
+#                                         window_size=args.window_size,
+#                                         unit_length=2**args.down_t)
+
+train_loader = dataset_MOT_segmented.DATALoader(args.dataname,
                                         args.batch_size,
                                         window_size=args.window_size,
                                         unit_length=2**args.down_t)
 
-train_loader_iter = dataset_MOT_MCS.cycle(train_loader)
+# train_loader_iter = dataset_MOT_MCS.cycle(train_loader)
+train_loader_iter = dataset_MOT_segmented.cycle(train_loader)
 
 val_loader = dataset_TM_eval.DATALoader(args.dataname, False,
                                         32,
@@ -128,7 +136,29 @@ net.cuda()
 ##### ---- Optimizer & Scheduler ---- #####
 optimizer = optim.AdamW(net.parameters(), lr=args.lr, betas=(0.9, 0.99), weight_decay=args.weight_decay)
 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_scheduler, gamma=args.gamma)
-  
+
+deepspeed_config = {
+    "train_micro_batch_size_per_gpu": args.batch_size,
+    "optimizer": {
+        "type": "AdamW",
+        "params": {
+            "lr": args.lr,
+            "betas": [
+                0.9,
+                0.99
+            ],
+            "weight_decay":args.weight_decay
+        }
+    },
+    "gradient_accumulation_steps": 1,
+    # "fp16": {
+    #     "enabled": True
+    # },
+    "zero_optimization": {
+        "stage": 0
+    }
+}
+net, optimizer, _, _ = deepspeed.initialize(model=net, optimizer=optimizer, args=args, config_params=deepspeed_config)
 
 Loss = losses.ReConsLoss(args.recons_loss, args.nb_joints)
 
