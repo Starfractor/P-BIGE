@@ -9,6 +9,7 @@ def get_args_parser():
     parser.add_argument('--dataname', type=str, default='kit', help='dataset directory')
     parser.add_argument('--batch-size', default=128, type=int, help='batch size')
     parser.add_argument('--window-size', type=int, default=64, help='training motion length')
+    parser.add_argument('--local_rank', type=int, default=0, help='Local rank for distributed training')
 
     ## optimization
     parser.add_argument('--total-iter', default=200000, type=int, help='number of total iterations to run')
