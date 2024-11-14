@@ -48,7 +48,6 @@ class VQMotionDataset(data.Dataset):
 
         self.data = []
         self.lengths = []
-        self.text = []
 
         # id_list = []
         # with cs.open(split_file, 'r') as f:
@@ -69,20 +68,13 @@ class VQMotionDataset(data.Dataset):
         for name in tqdm(id_list):
             try:
                 motion = np.load(pjoin(self.motion_dir, name + '.npy'))
-                # print(motion.shape, self.window_size)
-                if motion.shape[0] < int(self.window_size):
+                # print(motion.shape)
+                if motion.shape[0] < self.window_size:
                     continue
                 self.lengths.append(motion.shape[0] - self.window_size)
                 self.data.append(motion)
-                
-                with open(pjoin(self.text_dir, name + ".txt")) as f:
-                    for line in f.readlines():
-                        caption = line.strip().split("#")[0]
-                self.text.append(caption)
-                
-            except Exception as e:
+            except:
                 # Some motion may not exist in KIT dataset
-                print(e)
                 pass
 
             
@@ -104,23 +96,22 @@ class VQMotionDataset(data.Dataset):
 
     def __getitem__(self, item):
         motion = self.data[item]
-        text = self.text[item]
+        
         idx = random.randint(0, len(motion) - self.window_size)
 
         motion = motion[idx:idx+self.window_size]
         "Z Normalization"
         motion = (motion - self.mean) / self.std
 
-        return motion, text
+        return motion
 
 def DATALoader(dataset_name,
                batch_size,
                num_workers = 8,
                window_size = 64,
-               unit_length = 4,
-               mode='train'):
+               unit_length = 4):
     
-    trainSet = VQMotionDataset(dataset_name, window_size=window_size, unit_length=unit_length, mode=mode)
+    trainSet = VQMotionDataset(dataset_name, window_size=window_size, unit_length=unit_length)
     prob = trainSet.compute_sampling_prob()
     sampler = torch.utils.data.WeightedRandomSampler(prob, num_samples = len(trainSet) * 1000, replacement=True)
     train_loader = torch.utils.data.DataLoader(trainSet,

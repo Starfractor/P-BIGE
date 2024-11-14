@@ -8,12 +8,15 @@ def get_args_parser():
     ## dataloader
     
     parser.add_argument('--dataname', type=str, default='mcs', help='dataset directory')
-    parser.add_argument('--batch-size', default=400, type=int, help='batch size')
+    parser.add_argument('--batch-size', default=32, type=int, help='batch size')
+    parser.add_argument('--min-samples', default=10, type=int, help='number of latents to save')
     parser.add_argument('--fps', default=[20], nargs="+", type=int, help='frames per second')
-    parser.add_argument('--seq-len', type=int, default=49, help='training motion length')
+    parser.add_argument('--seq-len', type=int, default=128, help='training motion length')
+    parser.add_argument('--window-size', type=int, default=64)
+    parser.add_argument('--num-runs', default = 5, type=int, help='number of runs')
     
     ## optimization 
-    parser.add_argument('--total-iter', default=1000, type=int, help='number of total iterations to run')
+    parser.add_argument('--total-iter', default=50000, type=int, help='number of total iterations to run')
     parser.add_argument('--warm-up-iter', default=1000, type=int, help='number of total iterations for warmup')
     parser.add_argument('--lr', default=1e-2, type=float, help='max learning rate')
     parser.add_argument('--lr-scheduler', default=[60000], nargs="+", type=int, help="learning rate schedule (iterations)")
@@ -74,6 +77,8 @@ def get_args_parser():
     parser.add_argument('--loss-foot', type=float, default=1.0, help='Hyperparameter for temporal regulaizer')
     parser.add_argument('--feet-threshold', type=float, default=0.01, help='Hyperparameter to calculate ground whether joint in contact with the ground')
     parser.add_argument('--mcs', type = int, default = None, help='specify mcs score')
+    
+    parser.add_argument('--subject', type = str, default = "/data/panini/MCS_DATA/Data/000cffd9-e154-4ce5-a075-1b4e1fd66201/", help='Subject Info in opencap format')
 
 
     return parser.parse_args()

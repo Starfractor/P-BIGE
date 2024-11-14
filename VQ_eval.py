@@ -70,7 +70,7 @@ top3 = []
 matching = []
 repeat_time = 20
 for i in range(repeat_time):
-    best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, 0, best_fid=1000, best_iter=0, best_div=100, best_top1=0, best_top2=0, best_top3=0, best_matching=100, eval_wrapper=eval_wrapper, draw=False, save=False, savenpy=(i==0))
+    best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, 0, best_fid=1000, best_iter=0, best_div=100, best_top1=0, best_top2=0, best_top3=0, best_matching=100, eval_wrapper=eval_wrapper, draw=True, save=True, savenpy=(i==0))
     fid.append(best_fid)
     div.append(best_div)
     top1.append(best_top1)
@@ -92,6 +92,4 @@ top2 = np.array(top2)
 top3 = np.array(top3)
 matching = np.array(matching)
 msg_final = f"FID. {np.mean(fid):.3f}, conf. {np.std(fid)*1.96/np.sqrt(repeat_time):.3f}, Diversity. {np.mean(div):.3f}, conf. {np.std(div)*1.96/np.sqrt(repeat_time):.3f}, TOP1. {np.mean(top1):.3f}, conf. {np.std(top1)*1.96/np.sqrt(repeat_time):.3f}, TOP2. {np.mean(top2):.3f}, conf. {np.std(top2)*1.96/np.sqrt(repeat_time):.3f}, TOP3. {np.mean(top3):.3f}, conf. {np.std(top3)*1.96/np.sqrt(repeat_time):.3f}, Matching. {np.mean(matching):.3f}, conf. {np.std(matching)*1.96/np.sqrt(repeat_time):.3f}"
-logger.info(msg_final)
-msg_final = f"$ {np.mean(div):.3f}^{{\pm {np.std(div)*1.96/np.sqrt(repeat_time):.3f}}} $ & ${np.mean(fid):.3f}^{{\pm {np.std(fid)*1.96/np.sqrt(repeat_time):.3f}}}$ & ${np.mean(top1):.3f}^{{\pm {np.std(top1)*1.96/np.sqrt(repeat_time):.3f}}}, {np.mean(top2):.3f}^{{\pm {np.std(top2)*1.96/np.sqrt(repeat_time):.3f}}}, {np.mean(top3):.3f}^{{\pm {np.std(top3)*1.96/np.sqrt(repeat_time):.3f}}} $ & ${np.mean(matching):.3f}^{{{np.std(matching)*1.96/np.sqrt(repeat_time):.3f}}}$"
 logger.info(msg_final)

@@ -1,4 +1,4 @@
-# (CVPR 2023) T2M-GPT
+<!-- # (CVPR 2023) T2M-GPT
 Pytorch implementation of paper "T2M-GPT: Generating Human Motion from Textual Descriptions with Discrete Representations"
 
 
@@ -89,6 +89,8 @@ Our model can be learnt in a **single GPU V100-32G**
 ```bash
 conda env create -f environment.yml
 conda activate T2M-GPT
+
+ulimit -n 1000000 # Need to run pytorch open multiple files https://stackoverflow.com/questions/71642653/how-to-resolve-the-error-runtimeerror-received-0-items-of-ancdata
 ```
 
 The code was tested on Python 3.8 and PyTorch 1.8.1.
@@ -326,4 +328,4 @@ We appreciate helps from :
 
 ### 8. ChangLog
 
-* 2023/02/19 add the hugging face space demo for both skelton and SMPL mesh visualization.
+* 2023/02/19 add the hugging face space demo for both skelton and SMPL mesh visualization. -->

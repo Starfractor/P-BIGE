@@ -9,6 +9,7 @@ def get_args_parser():
     parser.add_argument('--dataname', type=str, default='kit', help='dataset directory')
     parser.add_argument('--batch-size', default=128, type=int, help='batch size')
     parser.add_argument('--window-size', type=int, default=64, help='training motion length')
+    parser.add_argument('--local_rank', type=int, default=0, help='Local rank for distributed training')
 
     ## optimization
     parser.add_argument('--total-iter', default=200000, type=int, help='number of total iterations to run')
@@ -20,7 +21,7 @@ def get_args_parser():
     parser.add_argument('--weight-decay', default=0.0, type=float, help='weight decay')
     parser.add_argument("--commit", type=float, default=0.02, help="hyper-parameter for the commitment loss")
     parser.add_argument('--loss-vel', type=float, default=0.1, help='hyper-parameter for the velocity loss')
-    parser.add_argument('--recons-loss', type=str, default='l1_smooth', help='reconstruction loss')
+    parser.add_argument('--recons-loss', type=str, default='l2', help='reconstruction loss')
     
     ## vqvae arch
     parser.add_argument("--code-dim", type=int, default=512, help="embedding dimension")
@@ -56,7 +57,6 @@ def get_args_parser():
     
     parser.add_argument('--vis-gt', action='store_true', help='whether visualize GT motions')
     parser.add_argument('--nb-vis', default=20, type=int, help='nb of visualizations')
-    parser.add_argument('--data_root', default='/home/ubuntu/data/HumanML3D', type=str, help='Directory where the training and evaluation data strored in HumanML3D format')
     
     
     return parser.parse_args()

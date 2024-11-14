@@ -18,8 +18,6 @@ import math
 # import ffmpeg
 from PIL import Image
 
-from utils.motion_process import recover_from_ric
-
 class WeakPerspectiveCamera(pyrender.Camera):
     def __init__(self,
                  scale,
@@ -46,10 +44,8 @@ class WeakPerspectiveCamera(pyrender.Camera):
 
 def render(motions, outdir='test_vis', device_id=0, name=None, pred=True):
     frames, njoints, nfeats = motions.shape
-    MINS = motions.min(axis=0)[0].min(axis=0)[0]
-    MAXS = motions.max(axis=0)[0].max(axis=0)[0]
-
-    # print(f'MIN: {MINS}, MAX: {MAXS}')
+    MINS = motions.min(axis=0).min(axis=0)
+    MAXS = motions.max(axis=0).max(axis=0)
 
     height_offset = MINS[1]
     motions[:, :, 1] -= height_offset
@@ -174,81 +170,25 @@ def render(motions, outdir='test_vis', device_id=0, name=None, pred=True):
     else:
         imageio.mimsave(outdir + name+'_gt.gif', out, fps=20)
     
-def render_skeleton(motions,savepath):
-    os.makedirs('/tmp/skeleton/',exist_ok=True)
-    motions = motions.detach().cpu().numpy()
-    bone_array = [0,0, 0, 0,1, 2, 3, 4, 5, 6, 7,8,9,9,9,12,13,14,16,17,18,19,20,21]
-    smpl_bone_array = np.array([[i,p] for i,p in enumerate(bone_array)])
-    motions[:,:,2] *= -1 # Replace z-axis with -z-axis. 
 
-    import polyscope as ps
-
-    ps.init()
-    smpl_skeleton = ps.register_curve_network("My skelton", motions[0], smpl_bone_array[:22])
-    ps.show()
-    for i in range(motions.shape[0]):
-        smpl_skeleton.update_node_positions(motions[i])
-        ps.screenshot(f"/tmp/skeleton/{i}.png")
-
-    os.system(f"ffmpeg -y -i /tmp/skeleton/%d.png -pix_fmt yuv420p {savepath}.mp4")
 
 
 
 if __name__ == "__main__":
-    import sys
     import argparse
-
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--filedir", type=str, default=None, help='motion npy file dir')
     parser.add_argument('--motion-list', default=None, nargs="+", type=str, help="motion name list")
-
-
-    # # Create a private key for connecting to the server using ssh-agent or PuYYYgen https://stackoverflow.com/questions/2224066/how-to-convert-ssh-keypairs-generated-using-puttygen-windows-into-key-pairs-us
-    # parser.add_argument('--server-key', default=None, type=str, help="Private key for the server")
     args = parser.parse_args()
-
-    
-    # sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-
-    # from server import NorthUCSDServer
-    
-    # ssh_client = NorthUCSDServer(key_filename=args.server_key)
-
-    # stdin, stdout, stderr = ssh_client.exec_command('ls')
-    # print(stdout.readlines())
-    # ssh_client.close()
-
-    # def sync(): 
-    #     ssh_client.sync_from_remote()
-        
-        
-        
-        
-        
-    #     ssh_client.sync_to_remote()
-
-
 
     filename_list = args.motion_list
     filedir = args.filedir
     
     for filename in filename_list:
-        motions = np.load(os.path.join(filedir ,filename + '.npy' ))
-        if motions.shape[-1] == 251:
-            num_joints = 21
-            motions = recover_from_ric(torch.from_numpy(motions).float().cuda(), num_joints)
-        elif motions.shape[-1] == 263:
-            num_joints = 22
-            motions = recover_from_ric(torch.from_numpy(motions).float().cuda(), num_joints)
+        motions = np.load(filedir + filename+'_pred.npy')
         print('pred', motions.shape, filename)
-        render_skeleton(motions,os.path.join(filedir,filename))
-        # render(motions, outdir=filedir, device_id=0, name=filename, pred=True)
+        render(motions[0], outdir=filedir, device_id=0, name=filename, pred=True)
 
-        # motions = np.load(filedir + filename+'_gt.npy')
-        # print('gt', motions.shape, filename)
-        # render(motions[0], outdir=filedir, device_id=0, name=filename, pred=False)
-
-
-    
+        motions = np.load(filedir + filename+'_gt.npy')
+        print('gt', motions.shape, filename)
+        render(motions[0], outdir=filedir, device_id=0, name=filename, pred=False)
