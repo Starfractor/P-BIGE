@@ -1,0 +1,32 @@
+VQVAE Training: 
+python3 train_vq.py --batch-size 256 --lr 2e-4 --total-iter 300000 --lr-scheduler 200000 --nb-code 512 --down-t 2 --depth 3 --dilation-growth-rate 3 --out-dir output --dataname mcs --vq-act relu --quantizer ema_reset --loss-vel 0.5 --recons-loss l1_smooth --exp-name VQVAE4
+
+with deepspeed:
+python3.8 /home/ubuntu/.local/bin/deepspeed train_vq.py --batch-size 256 --lr 2e-4 --total-iter 300000 --lr-scheduler 200000 --nb-code 512 --down-t 2 --depth 3 --dilation-growth-rate 3 --out-dir output --dataname mcs --vq-act relu --quantizer ema_reset --loss-vel 0.5 --recons-loss l1_smooth --exp-name VQVAE9
+
+VQVAE sample generation after training (generates both NPY and MOT):
+python MOT_eval.py --dataname mcs --out-dir output --exp-name VQVAE5_v2 --resume-pth output/VQVAE5_v2/300000.pth
+
+LIMO Optimization: 
+python VQ_Limo.py --exp-name VQVAE7 --vq-name model pth path --dataname mcs --seq-len 49 --total-iter 20000 --lr 0.1 --num-runs 10 --min-samples 20
+
+Latest: python VQ_Limo.py --exp-name VQVAE7 --vq-name output/VQVAE7_bs32_temporal/400000.pth --dataname mcs --seq-len 49 --total-iter 3000 --lr 0.5 --num-runs 10 --min-samples 20
+
+
+Generate MOT from NPY (after LIMO):
+python write_mot.py
+
+Visualize PCA embeddings of training samples from encoder (embeddings generated during LIMO):
+visualize_embedding.ipynb
+
+Calculate wasserstein distance:
+python calculate_wasserstein.py --folder name to generated data (.NPY) files
+python calculate_wasserstein.py "/home/ubuntu/data/opencap-processing/Data/*/OpenSimData/VQVAE7_Temporal_Kinematics/*_pred.npy"
+
+Generate mp4 from MOT:
+cd UCSD-OpenCap-Fitness_Dataset/
+export DISPLAY=:99.0
+python src/opencap_reconstruction_render.py <absolute subject-path>  <absolute mot-path>  <absolute save-path>
+
+Run Surrogate training:
+python3.8 surrogate_training.py

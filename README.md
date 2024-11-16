@@ -1,93 +1,331 @@
-# digital-coach-anwesh
+<!-- # (CVPR 2023) T2M-GPT
+Pytorch implementation of paper "T2M-GPT: Generating Human Motion from Textual Descriptions with Discrete Representations"
 
 
+[[Project Page]](https://mael-zys.github.io/T2M-GPT/) [[Paper]](https://arxiv.org/abs/2301.06052) [[Notebook Demo]](https://colab.research.google.com/drive/1Vy69w2q2d-Hg19F-KibqG0FRdpSj3L4O?usp=sharing) [[HuggingFace]](https://huggingface.co/vumichien/T2M-GPT) [[Space Demo]](https://huggingface.co/spaces/vumichien/generate_human_motion) [[T2M-GPT+]](https://github.com/Mael-zys/T2M-GPT-plus)
 
-## Getting started
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+<p align="center">
+<img src="img/Teaser.png" width="600px" alt="teaser">
+</p>
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
+If our project is helpful for your research, please consider citing :
+``` 
+@inproceedings{zhang2023generating,
+  title={T2M-GPT: Generating Human Motion from Textual Descriptions with Discrete Representations},
+  author={Zhang, Jianrong and Zhang, Yangsong and Cun, Xiaodong and Huang, Shaoli and Zhang, Yong and Zhao, Hongwei and Lu, Hongtao and Shen, Xi},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year={2023},
+}
 ```
-cd existing_repo
-git remote add origin https://gitlab.nrp-nautilus.io/shmaheshwari/digital-coach-anwesh.git
-git branch -M main
-git push -uf origin main
+
+
+## Table of Content
+* [1. Visual Results](#1-visual-results)
+* [2. Installation](#2-installation)
+* [3. Quick Start](#3-quick-start)
+* [4. Train](#4-train)
+* [5. Evaluation](#5-evaluation)
+* [6. SMPL Mesh Rendering](#6-smpl-mesh-rendering)
+* [7. Acknowledgement](#7-acknowledgement)
+* [8. ChangLog](#8-changlog)
+
+
+
+
+## 1. Visual Results (More results can be found in our [project page](https://mael-zys.github.io/T2M-GPT/))
+
+<!-- ![visualization](img/ALLvis_new.png) -->
+
+<p align="center">
+<table>
+  <tr>
+    <th colspan="5">Text: a man steps forward and does a handstand.</th>
+  </tr>
+  <tr>
+    <th>GT</th>
+    <th><u><a href="https://ericguo5513.github.io/text-to-motion/"><nobr>T2M</nobr> </a></u></th>
+    <th><u><a href="https://guytevet.github.io/mdm-page/"><nobr>MDM</nobr> </a></u></th>
+    <th><u><a href="https://mingyuan-zhang.github.io/projects/MotionDiffuse.html"><nobr>MotionDiffuse</nobr> </a></u></th>
+    <th>Ours</th>
+  </tr>
+  
+  <tr>
+    <td><img src="img/002103_gt_16.gif" width="140px" alt="gif"></td>
+    <td><img src="img/002103_pred_t2m_16.gif" width="140px" alt="gif"></td>
+    <td><img src="img/002103_pred_mdm_16.gif" width="140px" alt="gif"></td>
+    <td><img src="img/002103_pred_MotionDiffuse_16.gif" width="140px" alt="gif"></td>
+    <td><img src="img/002103_pred_16.gif" width="140px" alt="gif"></td>
+  </tr>
+
+  <tr>
+    <th colspan="5">Text: A man rises from the ground, walks in a circle and sits back down on the ground.</th>
+  </tr>
+  <tr>
+    <th>GT</th>
+    <th><u><a href="https://ericguo5513.github.io/text-to-motion/"><nobr>T2M</nobr> </a></u></th>
+    <th><u><a href="https://guytevet.github.io/mdm-page/"><nobr>MDM</nobr> </a></u></th>
+    <th><u><a href="https://mingyuan-zhang.github.io/projects/MotionDiffuse.html"><nobr>MotionDiffuse</nobr> </a></u></th>
+    <th>Ours</th>
+  </tr>
+  
+  <tr>
+    <td><img src="img/000066_gt_16.gif" width="140px" alt="gif"></td>
+    <td><img src="img/000066_pred_t2m_16.gif" width="140px" alt="gif"></td>
+    <td><img src="img/000066_pred_mdm_16.gif" width="140px" alt="gif"></td>
+    <td><img src="img/000066_pred_MotionDiffuse_16.gif" width="140px" alt="gif"></td>
+    <td><img src="img/000066_pred_16.gif" width="140px" alt="gif"></td>
+  </tr>
+</table>
+</p>
+ 
+## 2. Installation
+
+### 2.1. Environment
+
+
+Our model can be learnt in a **single GPU V100-32G**
+
+```bash
+conda env create -f environment.yml
+conda activate T2M-GPT
+
+ulimit -n 1000000 # Need to run pytorch open multiple files https://stackoverflow.com/questions/71642653/how-to-resolve-the-error-runtimeerror-received-0-items-of-ancdata
 ```
 
-## Integrate with your tools
+The code was tested on Python 3.8 and PyTorch 1.8.1.
 
-- [ ] [Set up project integrations](https://gitlab.nrp-nautilus.io/shmaheshwari/digital-coach-anwesh/-/settings/integrations)
 
-## Collaborate with your team
+### 2.2. Dependencies
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+```bash
+bash dataset/prepare/download_glove.sh
+```
 
-## Test and Deploy
 
-Use the built-in continuous integration in GitLab.
+### 2.3. Datasets
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
 
-***
+We are using two 3D human motion-language dataset: HumanML3D and KIT-ML. For both datasets, you could find the details as well as download link [[here]](https://github.com/EricGuo5513/HumanML3D).   
 
-# Editing this README
+Take HumanML3D for an example, the file directory should look like this:  
+```
+./dataset/HumanML3D/
+├── new_joint_vecs/
+├── texts/
+├── Mean.npy # same as in [HumanML3D](https://github.com/EricGuo5513/HumanML3D) 
+├── Std.npy # same as in [HumanML3D](https://github.com/EricGuo5513/HumanML3D) 
+├── train.txt
+├── val.txt
+├── test.txt
+├── train_val.txt
+└── all.txt
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
 
-## Suggestions for a good README
+### 2.4. Motion & text feature extractors:
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+We use the same extractors provided by [t2m](https://github.com/EricGuo5513/text-to-motion) to evaluate our generated motions. Please download the extractors.
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+bash dataset/prepare/download_extractor.sh
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### 2.5. Pre-trained models 
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+The pretrained model files will be stored in the 'pretrained' folder:
+```bash
+bash dataset/prepare/download_model.sh
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### 2.6. Render SMPL mesh (optional)
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+If you want to render the generated motion, you need to install:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+sudo sh dataset/prepare/download_smpl.sh
+conda install -c menpo osmesa
+conda install h5py
+conda install -c conda-forge shapely pyrender trimesh mapbox_earcut
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## 3. Quick Start
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+A quick start guide of how to use our code is available in [demo.ipynb](https://colab.research.google.com/drive/1Vy69w2q2d-Hg19F-KibqG0FRdpSj3L4O?usp=sharing)
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+<p align="center">
+<img src="img/demo.png" width="400px" alt="demo">
+</p>
 
-## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+## 4. Train
+
+Note that, for kit dataset, just need to set '--dataname kit'.
+
+### 4.1. VQ-VAE 
+
+The results are saved in the folder output.
+
+<details>
+<summary>
+VQ training
+</summary>
+
+```bash
+python3 train_vq.py \
+--batch-size 256 \
+--lr 2e-4 \
+--total-iter 300000 \
+--lr-scheduler 200000 \
+--nb-code 512 \
+--down-t 2 \
+--depth 3 \
+--dilation-growth-rate 3 \
+--out-dir output \
+--dataname t2m \
+--vq-act relu \
+--quantizer ema_reset \
+--loss-vel 0.5 \
+--recons-loss l1_smooth \
+--exp-name VQVAE
+```
+
+</details>
+
+### 4.2. GPT 
+
+The results are saved in the folder output.
+
+<details>
+<summary>
+GPT training
+</summary>
+
+```bash
+python3 train_t2m_trans.py  \
+--exp-name GPT \
+--batch-size 128 \
+--num-layers 9 \
+--embed-dim-gpt 1024 \
+--nb-code 512 \
+--n-head-gpt 16 \
+--block-size 51 \
+--ff-rate 4 \
+--drop-out-rate 0.1 \
+--resume-pth output/VQVAE/net_last.pth \
+--vq-name VQVAE \
+--out-dir output \
+--total-iter 300000 \
+--lr-scheduler 150000 \
+--lr 0.0001 \
+--dataname t2m \
+--down-t 2 \
+--depth 3 \
+--quantizer ema_reset \
+--eval-iter 10000 \
+--pkeep 0.5 \
+--dilation-growth-rate 3 \
+--vq-act relu
+```
+
+</details>
+
+## 5. Evaluation 
+
+### 5.1. VQ-VAE 
+<details>
+<summary>
+VQ eval
+</summary>
+
+```bash
+python3 VQ_eval.py \
+--batch-size 256 \
+--lr 2e-4 \
+--total-iter 300000 \
+--lr-scheduler 200000 \
+--nb-code 512 \
+--down-t 2 \
+--depth 3 \
+--dilation-growth-rate 3 \
+--out-dir output \
+--dataname t2m \
+--vq-act relu \
+--quantizer ema_reset \
+--loss-vel 0.5 \
+--recons-loss l1_smooth \
+--exp-name TEST_VQVAE \
+--resume-pth output/VQVAE/net_last.pth
+```
+
+</details>
+
+### 5.2. GPT
+
+<details>
+<summary>
+GPT eval
+</summary>
+
+Follow the evaluation setting of [text-to-motion](https://github.com/EricGuo5513/text-to-motion), we evaluate our model 20 times and report the average result. Due to the multimodality part where we should generate 30 motions from the same text, the evaluation takes a long time.
+
+```bash
+python3 GPT_eval_multi.py  \
+--exp-name TEST_GPT \
+--batch-size 128 \
+--num-layers 9 \
+--embed-dim-gpt 1024 \
+--nb-code 512 \
+--n-head-gpt 16 \
+--block-size 51 \
+--ff-rate 4 \
+--drop-out-rate 0.1 \
+--resume-pth output/VQVAE/net_last.pth \
+--vq-name VQVAE \
+--out-dir output \
+--total-iter 300000 \
+--lr-scheduler 150000 \
+--lr 0.0001 \
+--dataname t2m \
+--down-t 2 \
+--depth 3 \
+--quantizer ema_reset \
+--eval-iter 10000 \
+--pkeep 0.5 \
+--dilation-growth-rate 3 \
+--vq-act relu \
+--resume-trans output/GPT/net_best_fid.pth
+```
+
+</details>
+
+
+## 6. SMPL Mesh Rendering 
+
+<details>
+<summary>
+SMPL Mesh Rendering 
+</summary>
+
+You should input the npy folder address and the motion names. Here is an example:
+
+```bash
+python3 render_final.py --filedir output/TEST_GPT/ --motion-list 000019 005485
+```
+
+</details>
+
+### 7. Acknowledgement
+
+We appreciate helps from :  
+
+* public code like [text-to-motion](https://github.com/EricGuo5513/text-to-motion), [TM2T](https://github.com/EricGuo5513/TM2T), [MDM](https://github.com/GuyTevet/motion-diffusion-model), [MotionDiffuse](https://github.com/mingyuan-zhang/MotionDiffuse) etc.
+* <a href='https://mathis.petrovich.fr/'>Mathis Petrovich</a>, <a href='https://dulucas.github.io/'>Yuming Du</a>, <a href='https://github.com/yingyichen-cyy'>Yingyi Chen</a>, <a href='https://dexiong.me/'>Dexiong Chen</a> and <a href='https://xuelin-chen.github.io/'>Xuelin Chen</a> for inspiring discussions and valuable feedback.
+* <a href='https://github.com/vumichien'>Minh Chien Vu</a> for the hugging face space demo.
+
+### 8. ChangLog
+
+* 2023/02/19 add the hugging face space demo for both skelton and SMPL mesh visualization. -->
