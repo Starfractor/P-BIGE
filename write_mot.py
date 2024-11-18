@@ -3,6 +3,23 @@ import numpy as np
 from glob import glob
 # from osim_sequence import OSIMSequence
 
+
+
+def write_mot33_simulation(path, data, framerate=60):
+    # header_string = f"Coordinates\nversion=1\nnRows={data.shape[0]}\nnColumns=34\ninDegrees=yes\n\nUnits are S.I. units (second, meters, Newtons, ...)\nIf the header above contains a line with 'inDegrees', this indicates whether rotational values are in degrees (yes) or radians (no).\n\nendheader\ntime	pelvis_tilt	pelvis_list	pelvis_rotation	pelvis_tx	pelvis_ty	pelvis_tz	hip_flexion_r	hip_adduction_r	hip_rotation_r	knee_angle_r	ankle_angle_r	subtalar_angle_r	mtp_angle_r	hip_flexion_l	hip_adduction_l	hip_rotation_l	knee_angle_l	ankle_angle_l	subtalar_angle_l	mtp_angle_l	lumbar_extension	lumbar_bending	lumbar_rotation	arm_flex_r	arm_add_r	arm_rot_r	elbow_flex_r	pro_sup_r	arm_flex_l	arm_add_l	arm_rot_l	elbow_flex_l	pro_sup_l\n"
+    
+    header_string = f"Coordinates\nversion=1\nnRows={data.shape[0]}\nnColumns=34\ninDegrees=yes\n\nUnits are S.I. units (second, meters, Newtons, ...)\nIf the header above contains a line with 'inDegrees', this indicates whether rotational values are in degrees (yes) or radians (no).\n\nendheader\ntime	pelvis_tilt	pelvis_list	pelvis_rotation	pelvis_tx	pelvis_ty	pelvis_tz	hip_flexion_l	hip_adduction_l	hip_rotation_l	hip_flexion_r	hip_adduction_r	hip_rotation_r	knee_angle_l	knee_angle_r	ankle_angle_l	ankle_angle_r	subtalar_angle_l	subtalar_angle_r	mtp_angle_l	mtp_angle_r	lumbar_extension	lumbar_bending	lumbar_rotation	arm_flex_l	arm_add_l	arm_rot_l	arm_flex_r	arm_add_r	arm_rot_r	elbow_flex_l	elbow_flex_r	pro_sup_l	pro_sup_r\n"
+
+    with open(path, 'w') as f:
+        f.write(header_string)
+        for i,d in enumerate(data):
+            d = [str(i/60)] + [str(x) for x in d]
+            
+            # print(d)
+            d = "      " +  "\t     ".join(d) + "\n"
+            # print(d)
+            f.write(d)
+
 # writes data in 196x35 format
 def write_mot35(path, data, framerate=60):
     os.makedirs(os.path.dirname(path),exist_ok=True)

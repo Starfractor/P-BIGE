@@ -22,7 +22,7 @@ class VQMotionDataset(data.Dataset):
             self.max_motion_length = 196 # Maximum length of sequence, change this for different lengths
             self.meta_dir = '/home/ubuntu/data/HumanML3D'
         
-        self.file_list = glob("/home/ubuntu/data/MCS_DATA/Data/*/OpenSimData/Dynamics/*_segment_*/kinematics_*_muscle_driven.mot")
+        self.file_list = glob("/home/ubuntu/data/MCS_DATA/Data/*/OpenSimData/Dynamics/*_segment_*/kinematics_activations_*_muscle_driven.mot")
         self.train_data = []
         self.train_lengths = []
         self.train_names = []
@@ -85,6 +85,7 @@ class VQMotionDataset(data.Dataset):
         
         print("Total number of train motions {}".format(len(self.train_data)))
         print("Total number of test motions {}".format(len(self.test_data)))
+        print("Data shape:", data['poses'].shape)
 
     def inv_transform(self, data):
         return data * self.std + self.mean
@@ -99,6 +100,8 @@ class VQMotionDataset(data.Dataset):
         if self.mode == 'train':
             return len(self.train_data)
         if self.mode == 'test':
+            return len(self.test_data)
+        if self.mode == 'limo':
             return len(self.test_data)
 
     def __getitem__(self, item):
@@ -127,10 +130,35 @@ class VQMotionDataset(data.Dataset):
 
             return motion, len_motion, name
         
+        if self.mode == 'test':
+            motion = self.test_data[item]
+            len_motion = len(motion) if len(motion) <=self.max_motion_length else self.max_motion_length
+            name = self.test_names[item]
+            
+            # idx = random.randint(0, len(motion) - self.window_size)
+            # motion = motion[idx:idx+self.window_size]
+            
+            if len(motion) >= self.max_motion_length:
+                idx = random.randint(0, len(motion) - self.max_motion_length)
+                motion = motion[idx:idx+self.max_motion_length]
+            else:
+                # Pad with 0
+                # pad_width = self.max_motion_length - len(motion)
+                # motion = np.pad(motion, ((0, pad_width), (0,0)), mode='constant', constant_values=0)
+                
+                # Repeat motion from start
+                repeat_count = (self.max_motion_length + len(motion) - 1) // len(motion)  # Calculate repetitions needed
+                motion = np.tile(motion, (repeat_count, 1))[:self.max_motion_length]
+            
+            "Z Normalization"
+            # motion = (motion - self.mean) / self.std
+
+            return motion, len_motion, name
+        
         if self.mode == 'limo':
-            motion = self.data[item]
+            motion = self.train_data[item]
             len_motion = len(motion)
-            name = self.names[item]
+            name = self.train_names[item]
             
             if len_motion < self.max_motion_length:
                 pad_width = self.max_motion_length - len_motion
@@ -151,7 +179,7 @@ class VQMotionDataset(data.Dataset):
 
 def DATALoader(dataset_name,
                batch_size,
-               num_workers = 8,
+               num_workers = 4,
                window_size = 64,
                unit_length = 4,
                mode = 'train'):
