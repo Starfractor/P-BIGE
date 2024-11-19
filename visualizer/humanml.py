@@ -104,9 +104,8 @@ class OSIMSequence():
         self._render_kwargs = kwargs
 
         # The node names of the skeleton model, the associated mesh and the template indices
-        self.node_names = [osim.skeleton.getBodyNode(i).getName() for i in range(osim.skeleton.getNumBodyNodes())]    
-
-
+        self.node_names = [n.getName() for n in osim.skeleton.getBodyNodes()]
+        
         self.meshes_dict = {}
         self.indices_dict = {}
         self.generate_meshes_dict() # Populate self.meshes_dict and self.indices_dict
@@ -419,9 +418,9 @@ class OSIMRetargetter:
         self.t = 0
 
 
-        # Experiments_dirs
+        # All data
         self.exp_dir = exp_dir
-        self.exps = [file for file in os.listdir(exp_dir) if os.path.isdir(os.path.join(exp_dir, file))  and 'LIMO' in file]
+        self.exps = [file for file in os.listdir(self.exp_dir) if file.endswith('.npy')]
 
         # Categories 
         from classifiers import desc_to_action
@@ -444,7 +443,7 @@ class OSIMRetargetter:
             "category_options": self.categories,
             "category_options_selected": self.categories[0],
 
-            "rank": 1,
+            "index": 1,
 
             "is_paused": False
         }
@@ -499,12 +498,14 @@ class OSIMRetargetter:
   
         self.target_joints = motions
         self.target_filepath = motion_path
-        # self.T = motions.shape[0]
+        self.T = motions.shape[0]
 
     
 
-    def retarget(self,lambda_temporal=0.1,max_epochs=2): 
+    def retarget(self,lambda_temporal=0.1,max_epochs=1): 
         
+        return  
+    
         skeleton = self.osim.osim.skeleton
 
         dof = skeleton.getPositions().shape[0]
@@ -528,7 +529,7 @@ class OSIMRetargetter:
             target_joints = self.target_joints[t,target_joints_indices].astype(np.float64).reshape((-1,1))
             skeleton.setPositions(mot_data[t])
             for i in range(max_epochs):
-                err = skeleton.fitJointsToWorldPositions(bodyJoints, target_joints, scaleBodies=True,logOutput=True,lineSearch=True)
+                err = skeleton.fitJointsToWorldPositions(bodyJoints, target_joints, scaleBodies=True,logOutput=False,lineSearch=True)
                 if np.abs(err - best_error_timestep[t]) < 1e-4:
                     break 
                 
@@ -593,13 +594,13 @@ class OSIMRetargetter:
 
         self.smpl_skeleton = ps.register_curve_network("My skelton", self.target_joints[0], smpl_bone_array[:22])
 
-        self.ps_biomechnical = ps.register_surface_mesh("Biomechnical Model",self.osim.vertices[0],self.osim.faces,transparency=0.7,color=np.array([1,1,1]))
-        self.ps_biomechnical_joints = ps.register_point_cloud("Biomechnical Joints",self.osim.joints[0],color=np.array([0,0,0]))
+        # self.ps_biomechnical = ps.register_surface_mesh("Biomechnical Model",self.osim.vertices[0],self.osim.faces,transparency=0.7,color=np.array([1,1,1]))
+        # self.ps_biomechnical_joints = ps.register_point_cloud("Biomechnical Joints",self.osim.joints[0],color=np.array([0,0,0]))
 
         joint_mapping = np.concatenate([self.target_joints[0,self.smpl_index],self.osim.joints[0,self.osim_index]],axis=0)
         joint_mapping_edges = np.array([(i,joint_mapping.shape[0]//2+i) for i in range(joint_mapping.shape[0]//2)])
         
-        self.ps_joint_mapping = ps.register_curve_network(f"Mapping (target- smpl) joints",joint_mapping,joint_mapping_edges,radius=0.001,color=np.array([0,1,0]))
+        # self.ps_joint_mapping = ps.register_curve_network(f"Mapping (target- smpl) joints",joint_mapping,joint_mapping_edges,radius=0.001,color=np.array([0,1,0]))
 
         # ps.set_ground_plane_height_factor(0)
 
@@ -686,40 +687,16 @@ class OSIMRetargetter:
 
             # psim.TextUnformatted("Load Optimized samples")
 
-            changed = psim.BeginCombo("- Experiement", self.polyscope_scene["experiment_options_selected"])
-            if changed:
+            changed_exp = psim.BeginCombo("- Experiement", self.polyscope_scene["experiment_options_selected"])
+            if changed_exp:
                 for val in self.polyscope_scene["experiment_options"]:
                     _, selected = psim.Selectable(val, selected=self.polyscope_scene["experiment_options_selected"]==val)
                     if selected:
                         self.polyscope_scene["experiment_options_selected"] = val
                 psim.EndCombo()
-
-            changed = psim.BeginCombo("- Category", self.polyscope_scene["category_options_selected"])
-            if changed:
-                for val in self.polyscope_scene["category_options"]:
-                    _, selected = psim.Selectable(val, selected=self.polyscope_scene["category_options_selected"]==val)
-                    if selected:
-                        self.polyscope_scene["category_options_selected"] = val
-                psim.EndCombo()
-
-
-
-            changed, new_rank = psim.InputInt("- rank", self.polyscope_scene["rank"], step=1, step_fast=10) 
-            if changed: 
-                self.polyscope_scene["rank"] = new_rank # Only change values when button is pressed. Otherwise will be continously update like self.t 
-                
-                if self.polyscope_scene["rank"] > 100:
-                    self.polyscope_scene['rank'] = 100
-                elif self.polyscope_scene["rank"] < 1: 
-                    self.polyscope_scene['rank'] = 1 
-                else: 
-                    pass
-
             
             if(psim.Button("Load Optimized samples")):
                 filepath = os.path.join(self.exp_dir,self.polyscope_scene['experiment_options_selected'])
-                filepath = os.path.join(filepath,'category_' + self.polyscope_scene['category_options_selected'].replace('fast', 'full').replace(' ', '_'))
-                filepath = os.path.join(filepath, f"entry_{self.polyscope_scene['rank']-1}.npy")
                 self.load_joints(filepath)
                 self.retarget()
                 # ps.set_ground_plane_height_factor(np.min(self.osim.joints[:,:,1]))
@@ -761,18 +738,21 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    assert args.file is not None or args.motion_list is not None or args.out_dir is not None, "Please provide --file, --motion-list or --out-dir"
-
-    osim_retargetter = OSIMRetargetter(exp_dir=os.path.dirname(os.path.dirname(os.path.dirname(args.file))))
+    assert args.file is not None or \
+        (args.motion_list is not None and args.out_dir is not None) or \
+        args.out_dir is not None,\
+        "Please provide --file or  --motion-list or --out-dir"
 
     if args.file is not None:
+        osim_retargetter = OSIMRetargetter(exp_dir=os.path.dirname(args.file))
         osim_retargetter.load_joints(args.file)
 
         osim_retargetter.retarget()
         osim_retargetter.render()
         osim_retargetter.save(save_path=args.file.replace('.npy', '.mot'))
 
-    elif args.motion_list is not None:
+    elif args.motion_list is not None and args.out_dir is not None:
+        osim_retargetter = OSIMRetargetter(exp_dir=args.out_dir)
         if args.out_dir is not None:
             args.motion_list = [os.path.join(args.out_dir, x) for x in args.motion_list]    
         
@@ -782,6 +762,7 @@ if __name__ == "__main__":
             osim_retargetter.save(save_path=filename.replace('.npy', '.mot'))
 
     elif args.out_dir is not None:
+        osim_retargetter = OSIMRetargetter(exp_dir=args.out_dir)
         for filename in os.listdir(args.out_dir):
             if filename.endswith('.npy'):
                 osim_retargetter.load_joints(os.path.join(args.out_dir, filename))
