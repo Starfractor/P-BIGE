@@ -23,6 +23,9 @@ from write_mot import write_mot33, write_mot35, write_mot33_simulation
 
 import deepspeed 
 
+# import settings
+
+
 def write_mot(path, data, framerate=60):
     header_string = f"Coordinates\nversion=1\nnRows={data.shape[0]}\nnColumns=36\ninDegrees=yes\n\nUnits are S.I. units (second, meters, Newtons, ...)\nIf the header above contains a line with 'inDegrees', this indicates whether rotational values are in degrees (yes) or radians (no).\n\nendheader\ntime	pelvis_tilt	pelvis_list	pelvis_rotation	pelvis_tx	pelvis_ty	pelvis_tz	hip_flexion_r	hip_adduction_r	hip_rotation_r	knee_angle_r	knee_angle_r_beta	ankle_angle_r	subtalar_angle_r	mtp_angle_r	hip_flexion_l	hip_adduction_l	hip_rotation_l	knee_angle_l	knee_angle_l_beta	ankle_angle_l	subtalar_angle_l	mtp_angle_l	lumbar_extension	lumbar_bending	lumbar_rotation	arm_flex_r	arm_add_r	arm_rot_r	elbow_flex_r	pro_sup_r	arm_flex_l	arm_add_l	arm_rot_l	elbow_flex_l	pro_sup_l\n"
 
@@ -93,6 +96,8 @@ val_loader = dataset_MOT_segmented.DATALoader(args.dataname,
                                         mode='limo')
 
 
+
+
 ##### ---- Device ---- #####
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -120,6 +125,10 @@ net.to(device)
 
 
 ############ Module to load subject info ################
+MCS_PATH = "/data/panini/MCS_DATA"
+args.subject = os.path.join(MCS_PATH, 'Data', args.subject) if not os.path.exists(args.subject) else args.subject
+
+
 from osim_sequence import load_osim, groundConstraint, GetLowestPointLayer
 assert os.path.isdir(args.subject), "Location to subject info does not exist"
 osim_path = os.path.join(args.subject,'OpenSimData','Model', 'LaiArnoldModified2017_poly_withArms_weldHand_scaled_adjusted_contacts.osim')
@@ -128,7 +137,19 @@ osim_geometry_dir = os.path.join("/data/panini/MCS_DATA",'OpenCap_LaiArnoldModif
 assert os.path.exists(osim_geometry_dir), f"Osim geometry path:{osim_geometry_dir} does not exist"
 
 osim = load_osim(osim_path, osim_geometry_dir, ignore_geometry=False)
+subject_session = os.path.basename(args.subject.rstrip('/'))
 
+
+################ Load Surrogate Model for muscle activity prediction ################
+from surrogate import TransformerModel
+surrogate = TransformerModel(input_dim=33, output_dim=80, num_layers=3, num_heads=3, dim_feedforward=128, dropout=0.1).to(device)
+# Save path for the model
+save_path = "transformer_surrogate_model_v2.pth"
+
+assert os.path.exists(save_path), f"Model not found at {save_path}" 
+
+surrogate.load_model(save_path)
+surrogate.eval()
 
 
 # Assert data is being loaded is compatible with nimble physics engine   
@@ -312,6 +333,18 @@ def get_proximity_loss(z, embedding, reduce = True, chunk_size = 1000):
         proximity_loss = min_distances
 
     return proximity_loss, min_indices
+
+def constained_optimization(x, low, high):
+
+    # Compute the three expressions
+    expr1 = x - high
+    expr2 = low - x
+    expr3 = torch.zeros_like(x)
+    
+    # Compute the element-wise maximum of the three expressions
+    result = torch.max(torch.max(expr1, expr2), expr3)
+    return result        
+    
     
 def get_optimized_z(category=9,initialization='mean', device='cuda'): 
     print("Optimizing for category:",category)
@@ -371,6 +404,7 @@ def get_optimized_z(category=9,initialization='mean', device='cuda'):
         
 
         foot_loss = torch.tensor([0.0],device=device)
+        foot_sliding_loss = torch.tensor([0.0],device=device)
         indices_to_keep = [i for i in range(pred_motion.shape[2]) if i not in [10,18]]
         motion = pred_motion[:,:]
         for i in range(pred_motion.shape[0]):
@@ -378,14 +412,42 @@ def get_optimized_z(category=9,initialization='mean', device='cuda'):
             # m_tensor = torch.tensor(m, dtype=torch.float32, device=device, requires_grad=True)
             m_tensor = pred_motion[i,:]
             # for j in range(1,pred_motion.shape[1],3):
-            for rand_j in range(1,int(epoch*10/3000)):
-                j = random.randint(1,pred_motion.shape[1]-1)
+            for rand_j in range(1,int(epoch*5/(args.total_iter+1))):
+                j = random.randint(1,pred_motion.shape[1]-2)
                 nimble_input_motion = m_tensor[j]
                 nimble_input_motion[6:] = torch.deg2rad(nimble_input_motion[6:])
                 nimble_input_motion[:3] = 0 # Set pelvis to 0
                 nimble_input_motion = nimble_input_motion.cpu()
                 x = GetLowestPointLayer.apply(osim.skeleton, nimble_input_motion).to(device)
                 foot_loss += x**2
+                
+                nimble_input_motion = m_tensor[j+1]
+                nimble_input_motion[6:] = torch.deg2rad(nimble_input_motion[6:])
+                nimble_input_motion[:3] = 0 # Set pelvis to 0
+                nimble_input_motion = nimble_input_motion.cpu()
+                x_t1 = GetLowestPointLayer.apply(osim.skeleton, nimble_input_motion).to(device)
+                foot_sliding_loss += (x_t1-x)**2
+
+        # Surrogate model loss
+        pred_muscle_activations = surrogate(pred_motion)        
+        muscle_activation_loss = torch.max(pred_muscle_activations[:,:,-1],dim=1)[0]
+        
+        # constrain_loss = constained_optimization(muscle_activation_loss,low=0.15,high=0.25)
+        constrain_loss = constained_optimization(muscle_activation_loss,low=args.low,high=args.high)
+        constrain_loss = torch.sum(constrain_loss)
+
+        # increase = True
+        # if increase:
+        #     muscle_activation_loss *= -1
+
+        muscle_activation_loss = torch.mean(muscle_activation_loss)
+        
+        
+
+                
+
+
+        # pred_muscle_activations_thigh = pred_muscle_activations[:,:,:]
 
         # loss = loss_proximity * 0.0001
         # foot_loss = foot_loss.to(device)
@@ -393,14 +455,21 @@ def get_optimized_z(category=9,initialization='mean', device='cuda'):
         if epoch < 500: # Early start for proximity loss 
             loss = loss_proximity * 0.001
         else:
-            loss = loss_proximity * 0.001 + foot_loss * 0.01 + 0.5*loss_temp + 5*loss_temp_trans
+            loss = loss_proximity * 0.01 \
+                + foot_loss * 0.01 + 0.01*foot_sliding_loss \
+                + 0.5*loss_temp + 5*loss_temp_trans \
+                + constrain_loss 
         # loss = foot_loss*0.01
         
         loss.backward()
         # print("Z grad",z.grad)
         optimizer.step()
         if epoch % 10 == 0:
-            print("Epoch:", epoch, "Loss:", loss.item(), "Penetration:", foot_loss.item()*0.01, "Temporal Loss:", 0.5*loss_temp.item(), "Proximity Loss:", 0.001*loss_proximity.item(), "Trans Temporal:", 0.5*loss_temp_trans)#"Difference:", torch.norm(z-old_z))
+            print("Epoch:", epoch, "Loss:", loss.item(), \
+                "Penetration:", foot_loss.item()*0.01, "Sliding:", foot_sliding_loss.item(), \
+                "Temporal Loss:", 0.5*loss_temp.item(), "Proximity Loss:", 0.001*loss_proximity.item(), \
+                "Trans Temporal:", 0.5*loss_temp_trans.item(), \
+                f"Muscle activation:{muscle_activation_loss.item()} Constrains:{constrain_loss.item()}")#"Difference:", torch.norm(z-old_z))
             
         if epoch % 1000 == 0:
             os.makedirs("save_LIMO/normal_subject",exist_ok=True)
@@ -415,19 +484,23 @@ def get_optimized_z(category=9,initialization='mean', device='cuda'):
         # z_quantized, _, _ = net.vqvae.quantizer(z)
         pred_motion = decode_latent(net,z)
         
-        loss, min_indices = get_proximity_loss(z, proximity_embedding, reduce = False)
-        print(min_indices)
-
-        loss = loss.view(args.batch_size,-1) # Reshape to match sample x classifier window 
-
-        loss = loss.sum(1) # Sum across classifier windows      
-
-        sort_indices = torch.argsort(loss)
-
+        pred_muscle_activations = surrogate(pred_motion)        
+        muscle_activation_loss = torch.max(pred_muscle_activations[:,:,-1],dim=1)[0]
+        sort_indices = torch.argsort(muscle_activation_loss)
+        
+        # loss, min_indices = get_proximity_loss(z, proximity_embedding, reduce = False)
+        # print(min_indices)
+        # loss = loss.view(args.batch_size,-1) # Reshape to match sample x classifier window 
+        # loss = loss.sum(1) # Sum across classifier windows      
+        # sort_indices = torch.argsort(loss)
+        # z = z[sort_indices]
+        # loss = loss[sort_indices]
+        
         z = z[sort_indices]
-        loss = loss[sort_indices]
+        loss = muscle_activation_loss[sort_indices]
+        
         min_idx = min_indices[sort_indices]
-        print("Sorted min indices:",min_idx)
+        print("Sorted min indices:",min_idx, loss)
 
     del optimizer
     del loss_fn
@@ -447,8 +520,8 @@ if i == 9:
 
     category_name = "squat"
     # save_folder = os.path.join("latents",'category_'+category_name)
-    save_folder = os.path.join("latents_subject","run_"+str(run))
-    save_folder_mot = os.path.join(args.out_dir, "mot_visualization", "latents_subject_" + "run_"+str(run))
+    save_folder = os.path.join("latents_subject","run_" + subject_session)
+    save_folder_mot = os.path.join(args.out_dir, "mot_visualization", "latents_subject_" + "run_" + subject_session)
     
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
@@ -464,12 +537,12 @@ if i == 9:
     bs = min(bs,args.min_samples)
     for j in range(bs):
         entry = decoded_z[j]
-        file_path = os.path.join(save_folder,f'entry_{j}.npy')
+        file_path = os.path.join(save_folder,f'entry_{j}_{args.exp_name}.npy')
         print(f"Saving results in file:{file_path}")
         np.save(file_path, entry.cpu().detach().numpy())
         
         pred_motion_saved = np.load(file_path)
-        mot_file_path = os.path.join(save_folder_mot,f'entry_{j}.mot')
+        mot_file_path = os.path.join(save_folder_mot,f'entry_{j}_{args.exp_name}.mot')
         write_mot33_simulation(mot_file_path, pred_motion_saved)
         print(f"Saving mot in file:{mot_file_path}")
     # np.save(os.path.join(args.out_dir,f'scores_{category_name}.npy'), score.cpu().detach().numpy())
@@ -491,18 +564,27 @@ log_dir = os.path.join(args.out_dir,"logs")
 os.makedirs(log_dir, exist_ok=True)
 
 
-print(f"Running command: python src/evaluate_retrieved_mot_files.py -m /data/panini/digital-coach-anwesh/output_GPT_Final/LIMO_VQVAE14/mot_visualization/latents_subject_run_1/ -d /home/ubuntu/data/MCS_DATA/ --force")
-os.system(f"python src/evaluate_retrieved_mot_files.py -m /data/panini/digital-coach-anwesh/output_GPT_Final/LIMO_VQVAE14/mot_visualization/latents_subject_run_1/ -d /home/ubuntu/data/MCS_DATA/ --force > {os.path.join(log_dir, 'evaluate.log')}")
+os.system("/home/ubuntu/shareconda/etc/profile.d/conda.sh && conda activate T2M-GPT")
+
+print(f"Running command: python src/evaluate_retrieved_mot_files.py -m {os.path.join(args.out_dir,f'mot_visualization/latents_subject_run_{subject_session}')} -d /home/ubuntu/data/MCS_DATA/ --force")
+os.system(f"python src/evaluate_retrieved_mot_files.py -m {os.path.join(args.out_dir,f'mot_visualization/latents_subject_run_{subject_session}')} -d /home/ubuntu/data/MCS_DATA/ --force > {os.path.join(log_dir, 'evaluate.log')}")
 os.system(f"cat {os.path.join(log_dir, 'evaluate.log')}")
-os.system(f"python src/evaluation/foot_sliding_checker.py --sample_dir  ../MCS_DATA/latents_subject_run_1.txt > {os.path.join(log_dir, 'foot_sliding.log')}")
+os.system(f"python src/evaluation/foot_sliding_checker.py --sample_dir  ../MCS_DATA/latents_subject_run_{subject_session}.txt > {os.path.join(log_dir, 'foot_sliding.log')}")
 os.system(f"cat {os.path.join(log_dir, 'foot_sliding.log')}")
 
 
 os.environ['DISPLAY'] = ':99.0'
 
-for i in range(3):
-    mot_file_path = os.path.join(save_folder_mot,f'entry_{i}.mot')
-    mocap_motion_path = "/home/ubuntu/data/opencap-processing/Data/349e4383-da38-4138-8371-9a5fed63a56a/MarkerData/SQT01_1.trc"
+mocap_motion_paths = f"/home/ubuntu/data/opencap-processing/Data/{subject_session}/MarkerData/"    
+mocap_motion_paths = [os.path.join(mocap_motion_paths,file) for file in os.listdir(mocap_motion_paths) if file.endswith(".trc") and "SQT" in file.upper()]
+
+
+for i in range(0, bs, 4): # Every 4th entry out of 20 / 5 samples sorted by muscle activation
+    mot_file_path = os.path.join(save_folder_mot,f'entry_{i}_{args.exp_name}.mot')
+    
+    mocap_motion_path = mocap_motion_paths[i%len(mocap_motion_paths)]
+
+    print(f"Running Command: python src/opencap_reconstruction_render.py {mocap_motion_path} {mot_file_path} {os.path.join(args.out_dir,'latest_rendered') }")
     os.system(f"python src/opencap_reconstruction_render.py {mocap_motion_path} {mot_file_path} {os.path.join(args.out_dir,'latest_rendered') }")
     
 

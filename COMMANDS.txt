@@ -7,10 +7,15 @@ python3.8 /home/ubuntu/.local/bin/deepspeed train_vq.py --batch-size 256 --lr 2e
 VQVAE sample generation after training (generates both NPY and MOT):
 python MOT_eval.py --dataname mcs --out-dir output --exp-name VQVAE5_v2 --resume-pth output/VQVAE5_v2/300000.pth
 
-LIMO Optimization: 
-python VQ_Limo.py --exp-name VQVAE7 --vq-name model pth path --dataname mcs --seq-len 49 --total-iter 20000 --lr 0.1 --num-runs 10 --min-samples 20
+# LIMO Optimization: 
+# python VQ_Limo.py --exp-name VQVAE7 --vq-name model pth path --dataname mcs --seq-len 49 --total-iter 20000 --lr 0.1 --num-runs 10 --min-samples 20
+# Latest: python VQ_Limo.py --exp-name VQVAE7 --vq-name output/VQVAE7_bs32_temporal/400000.pth --dataname mcs --seq-len 49 --total-iter 3000 --lr 0.5 --num-runs 10 --min-samples 20
 
-Latest: python VQ_Limo.py --exp-name VQVAE7 --vq-name output/VQVAE7_bs32_temporal/400000.pth --dataname mcs --seq-len 49 --total-iter 3000 --lr 0.5 --num-runs 10 --min-samples 20
+Latestlimo code: /data/panini/digital-coach-anwesh/VQ_Limo_Subject.py
+
+Command: ` python VQ_Limo_Subject.py --exp-name Simulation-Train-Data --vq-name output/VQVAE11/260000.pth  --dataname mcs --seq-len 49 --total-iter 3000 --lr 0.5 --num-runs 1 --min-samples 20 `
+
+Added the same in COMMANDS.txt
 
 
 Generate MOT from NPY (after LIMO):

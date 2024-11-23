@@ -81,4 +81,8 @@ def get_args_parser():
     parser.add_argument('--subject', type = str, default = "/data/panini/MCS_DATA/Data/000cffd9-e154-4ce5-a075-1b4e1fd66201/", help='Subject Info in opencap format')
 
 
+    ############# Surrogate Model Options ################
+    parser.add_argument('--low', type=float, default=0.15,   help='Muscle activation lower bound')
+    parser.add_argument('--high', type=float, default=0.25,   help='Muscle activation higher bound')
+
     return parser.parse_args()
