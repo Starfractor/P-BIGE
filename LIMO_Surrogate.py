@@ -82,6 +82,8 @@ action_to_desc = {
         "push up" : 12
     }
 
+squat_muscles_indices = [-1,-2,-3,-7,-41,-42,-43,-47]
+
 wrapper_opt = get_opt(dataset_opt_path, torch.device('cuda'))
 eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
 
@@ -430,17 +432,17 @@ def get_optimized_z(category=9,initialization='mean', device='cuda'):
 
         # Surrogate model loss
         pred_muscle_activations = surrogate(pred_motion)        
-        muscle_activation_loss = torch.max(pred_muscle_activations[:,:,-1],dim=1)[0]
+        surrogate_muscle_activation = torch.max(pred_muscle_activations[:,:,squat_muscles_indices],dim=1)[0]
         
-        # constrain_loss = constained_optimization(muscle_activation_loss,low=0.15,high=0.25)
-        constrain_loss = constained_optimization(muscle_activation_loss,low=args.low,high=args.high)
+        # constrain_loss = constained_optimization(surrogate_muscle_activation,low=0.15,high=0.25)
+        constrain_loss = constained_optimization(surrogate_muscle_activation,low=args.low,high=args.high)
         constrain_loss = torch.sum(constrain_loss)
 
         # increase = True
         # if increase:
-        #     muscle_activation_loss *= -1
+        #     surrogate_muscle_activation *= -1
 
-        muscle_activation_loss = torch.mean(muscle_activation_loss)
+        surrogate_muscle_activation = torch.mean(surrogate_muscle_activation)
         
         
 
@@ -469,7 +471,7 @@ def get_optimized_z(category=9,initialization='mean', device='cuda'):
                 "Penetration:", foot_loss.item()*0.01, "Sliding:", foot_sliding_loss.item(), \
                 "Temporal Loss:", 0.5*loss_temp.item(), "Proximity Loss:", 0.001*loss_proximity.item(), \
                 "Trans Temporal:", 0.5*loss_temp_trans.item(), \
-                f"Muscle activation:{muscle_activation_loss.item()} Constrains:{constrain_loss.item()}")#"Difference:", torch.norm(z-old_z))
+                f"Muscle activation:{surrogate_muscle_activation.item()} Constrains:{constrain_loss.item()}")#"Difference:", torch.norm(z-old_z))
             
         if epoch % 1000 == 0:
             os.makedirs("save_LIMO/normal_subject",exist_ok=True)
@@ -485,8 +487,8 @@ def get_optimized_z(category=9,initialization='mean', device='cuda'):
         pred_motion = decode_latent(net,z)
         
         pred_muscle_activations = surrogate(pred_motion)        
-        muscle_activation_loss = torch.max(pred_muscle_activations[:,:,-1],dim=1)[0]
-        sort_indices = torch.argsort(muscle_activation_loss)
+        surrogate_muscle_activation = torch.amax(pred_muscle_activations[:,:,squat_muscles_indices],dim=(1,2))
+        sort_indices = torch.argsort(surrogate_muscle_activation)
         
         # loss, min_indices = get_proximity_loss(z, proximity_embedding, reduce = False)
         # print(min_indices)
@@ -497,7 +499,7 @@ def get_optimized_z(category=9,initialization='mean', device='cuda'):
         # loss = loss[sort_indices]
         
         z = z[sort_indices]
-        loss = muscle_activation_loss[sort_indices]
+        loss = surrogate_muscle_activation[sort_indices]
         
         min_idx = min_indices[sort_indices]
         print("Sorted min indices:",min_idx, loss)
@@ -566,10 +568,10 @@ os.makedirs(log_dir, exist_ok=True)
 
 os.system("/home/ubuntu/shareconda/etc/profile.d/conda.sh && conda activate T2M-GPT")
 
-print(f"Running command: python src/evaluate_retrieved_mot_files.py -m {os.path.join(args.out_dir,f'mot_visualization/latents_subject_run_{subject_session}')} -d /home/ubuntu/data/MCS_DATA/ --force")
-os.system(f"python src/evaluate_retrieved_mot_files.py -m {os.path.join(args.out_dir,f'mot_visualization/latents_subject_run_{subject_session}')} -d /home/ubuntu/data/MCS_DATA/ --force > {os.path.join(log_dir, 'evaluate.log')}")
+print(f"Running command: conda run -n T2M-GPT python src/evaluate_retrieved_mot_files.py -m {os.path.join(args.out_dir,f'mot_visualization/latents_subject_run_{subject_session}')} -d /home/ubuntu/data/MCS_DATA/ --force")
+os.system(f"conda run -n T2M-GPT python src/evaluate_retrieved_mot_files.py -m {os.path.join(args.out_dir,f'mot_visualization/latents_subject_run_{subject_session}')} -d /home/ubuntu/data/MCS_DATA/ --force > {os.path.join(log_dir, 'evaluate.log')}")
 os.system(f"cat {os.path.join(log_dir, 'evaluate.log')}")
-os.system(f"python src/evaluation/foot_sliding_checker.py --sample_dir  ../MCS_DATA/latents_subject_run_{subject_session}.txt > {os.path.join(log_dir, 'foot_sliding.log')}")
+os.system(f"conda run -n T2M-GPT python src/evaluation/foot_sliding_checker.py --sample_dir  ../MCS_DATA/latents_subject_run_{subject_session}.txt > {os.path.join(log_dir, 'foot_sliding.log')}")
 os.system(f"cat {os.path.join(log_dir, 'foot_sliding.log')}")
 
 
@@ -584,8 +586,8 @@ for i in range(0, bs, 4): # Every 4th entry out of 20 / 5 samples sorted by musc
     
     mocap_motion_path = mocap_motion_paths[i%len(mocap_motion_paths)]
 
-    print(f"Running Command: python src/opencap_reconstruction_render.py {mocap_motion_path} {mot_file_path} {os.path.join(args.out_dir,'latest_rendered') }")
-    os.system(f"python src/opencap_reconstruction_render.py {mocap_motion_path} {mot_file_path} {os.path.join(args.out_dir,'latest_rendered') }")
+    print(f"Running Command: conda run -n T2M-GPT python src/opencap_reconstruction_render.py {mocap_motion_path} {mot_file_path} {os.path.join(args.out_dir,'latest_rendered') }")
+    os.system(f"conda run -n T2M-GPT python src/opencap_reconstruction_render.py {mocap_motion_path} {mot_file_path} {os.path.join(args.out_dir,'latest_rendered') }")
     
 
     os.system(f"rm  {os.path.join(args.out_dir,'latest_rendered/*/images/*')}") # Clear the images folder
