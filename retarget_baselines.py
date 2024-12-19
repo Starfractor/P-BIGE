@@ -31,9 +31,10 @@ else:
 
 
 from utils.motion_process import recover_from_ric
+from write_mot import write_mot33_simulation
 
 
-def load_osim(osim_path, geometry_path, ignore_geometry=False):
+def load_osim(osim_path, geometry_path, DATA_DIR=None, ignore_geometry=False):
     """Load an osim file"""
        
     assert os.path.exists(osim_path), f'Could not find osim file {osim_path}'
@@ -41,14 +42,25 @@ def load_osim(osim_path, geometry_path, ignore_geometry=False):
 
     if geometry_path is not None: 
         # Check that there is a Geometry folder at the same level as the osim file
-        geometry_path = os.path.join(args.out_dir, 'OpenCap_LaiArnoldModified2017_Geometry') 
-    
+        geometry_path = os.path.join(DATA_DIR, 'OpenCap_LaiArnoldModified2017_Geometry') 
+        
+
+
     if os.path.dirname(osim_path) != os.path.dirname(geometry_path):        
         # Check that there is a Geometry folder at the same level as the osim file. Otherwise nimble physics cannot import it. 
         os.makedirs(os.path.join(os.path.dirname(osim_path),'Geometry'), exist_ok=True)
         for file in os.listdir(geometry_path):
-            if os.path.exists(os.path.join(os.path.dirname(osim_path),'Geometry',file)): continue
-            os.symlink(os.path.join(geometry_path, file), os.path.join(os.path.dirname(osim_path), 'Geometry', file))
+            check_path = os.path.join(os.path.dirname(osim_path),'Geometry',file)
+            check_path = os.path.abspath(check_path)
+            
+            if os.path.exists(check_path): continue # If symlink for a particular joint already exist then don't create a 
+            
+            # File data does not exist, but the filename exists, which is referecing to some random unrecongnized location  
+            if os.path.islink(check_path): 
+                os.unlink(check_path)
+
+
+            os.symlink(os.path.join(geometry_path, file), check_path)
     
 
         
@@ -62,6 +74,7 @@ def load_osim(osim_path, geometry_path, ignore_geometry=False):
     assert osim is not None, "Could not load osim file: {}".format(osim_path)
     return osim
 
+
 class OSIMSequence():
     """
     Represents a temporal sequence of OSSO poses. Can be loaded from disk or initialized from memory.
@@ -74,8 +87,8 @@ class OSIMSequence():
                  color_markers_per_index = False, # Overrides color_markers_per_part
                  color_skeleton_per_part = False,
                  osim_path = None,
-                 fps = None,
-                 fps_in = None,
+                 fps = 60,
+                 fps_in = 60,
                  is_rigged = False,
                  viewer = True,
                  **kwargs):
@@ -226,14 +239,14 @@ class OSIMSequence():
 
 
     @classmethod
-    def a_pose(cls, osim_path = None, **kwargs):
+    def a_pose(cls, osim_path = None, geometry_path=None, DATA_DIR=None, **kwargs):
         """Creates a OSIM sequence whose single frame is a OSIM mesh in rest pose."""
         # Load osim file
         if osim_path is None:
             osim : nimble.biomechanics.OpenSimFile = nimble.models.RajagopalHumanBodyModel()
             osim_path = "RajagopalHumanBodyModel.osim" # This is not a real path, but it is needed to instantiate the sequence object
         else:
-            osim = load_osim(osim_path)
+            osim = load_osim(osim_path,geometry_path=geometry_path, DATA_DIR=DATA_DIR)
             
         assert osim is not None, "Could not load osim file: {}".format(osim_path)
         motion = osim.skeleton.getPositions()[np.newaxis,:]
@@ -408,9 +421,26 @@ import torch
 import polyscope as ps
 import polyscope.imgui as psim
 class OSIMRetargetter: 
-    def __init__(self,exp_dir='./output-viz/'):
+    def __init__(self,subject_session,data_dirs=['/home/ubuntu/data/MCS_DATA', '/media/shubh/Elements/RoseYu/UCSD-OpenCap-Fitness-Dataset/MCS_DATA']):
 
-        self.osim = OSIMSequence.a_pose()
+            
+        
+        self.mcs_sessions = ["349e4383-da38-4138-8371-9a5fed63a56a","015b7571-9f0b-4db4-a854-68e57640640d","c613945f-1570-4011-93a4-8c8c6408e2cf","dfda5c67-a512-4ca2-a4b3-6a7e22599732","7562e3c0-dea8-46f8-bc8b-ed9d0f002a77","275561c0-5d50-4675-9df1-733390cd572f","0e10a4e3-a93f-4b4d-9519-d9287d1d74eb","a5e5d4cd-524c-4905-af85-99678e1239c8","dd215900-9827-4ae6-a07d-543b8648b1da","3d1207bf-192b-486a-b509-d11ca90851d7","c28e768f-6e2b-4726-8919-c05b0af61e4a","fb6e8f87-a1cc-48b4-8217-4e8b160602bf","e6b10bbf-4e00-4ac0-aade-68bc1447de3e","d66330dc-7884-4915-9dbb-0520932294c4","0d9e84e9-57a4-4534-aee2-0d0e8d1e7c45","2345d831-6038-412e-84a9-971bc04da597","0a959024-3371-478a-96da-bf17b1da15a9","ef656fe8-27e7-428a-84a9-deb868da053d","c08f1d89-c843-4878-8406-b6f9798a558e","d2020b0e-6d41-4759-87f0-5c158f6ab86a","8dc21218-8338-4fd4-8164-f6f122dc33d9"]
+        self.mcs_scores = [4,4,2,3,2,4,3,3,2,3,4,3,4,2,2,3,4,4,3,3,3]
+
+        # Iterate over possible locations for the data, use the first one which exist
+        self.data_dir = next( (data_dir for (n, data_dir) in enumerate(data_dirs) if os.path.isdir(data_dir) and os.path.exists(data_dir) ), None) # If we couldn't find anything, return None
+        assert self.data_dir is not None, f"Could not find any of the data directories {data_dirs}"
+
+        assert subject_session in self.mcs_sessions, f"Could not find session {subject_session} in the MCS dataset"
+
+
+
+        osim_path = os.path.join(self.data_dir, 'Data', subject_session, 'OpenSimData', 'Model', 'LaiArnoldModified2017_poly_withArms_weldHand_scaled_adjusted_contacts.osim') 
+        osim_geometry_path = os.path.join(self.data_dir,'OpenCap_LaiArnoldModified2017_Geometry')
+
+        # self.osim = OSIMSequence.a_pose()
+        self.osim = OSIMSequence.a_pose(osim_path, geometry_path=osim_geometry_path, DATA_DIR=self.data_dir)
 
         self.target_filepath = None
         self.target_joints = None 
@@ -420,8 +450,8 @@ class OSIMRetargetter:
 
 
         # Experiments_dirs
-        self.exp_dir = exp_dir
-        self.exps = [file for file in os.listdir(exp_dir) if os.path.isdir(os.path.join(exp_dir, file))]
+        self.exp_dir = os.getcwd()
+        self.exps = [file for file in os.listdir(self.exp_dir) if os.path.isdir(os.path.join(self.exp_dir, file))]
 
         # Categories 
         # from classifiers import desc_to_action
@@ -487,33 +517,16 @@ class OSIMRetargetter:
         self.smpl_index = np.array([self.mapping_bodyJoints[name] for name in self.mapping_bodyJoints])
 
 
-    def load_joints(self,motion_path,scale=1.0,isMDM=False):
+    def set_targe_joints(self,motions, video_path,scale=1.0,isMDM=False):
 
-        # motions = np.load(os.path.join(motion_path))        
-
-
-
-
-        if motions.shape[-1] == 263:
-            num_joints = 22
-            motions = recover_from_ric(torch.from_numpy(motions).float().cuda(), num_joints)
-            motions = motions.detach().cpu().numpy()
-
-        elif motions.shape[-1] == 3:
-            motions = np.load(motion_path,allow_pickle=True).item()['motion'][0].transpose(2,0,1)
-            if motions.shape[0] == 1:
-                motions = motions[0]
-            
-
-
-        # self.T = motions.shape[0]
-        print(f'completed loading {motion_path} with shape: {motions.shape}') 
+        self.T = motions.shape[0]
+        print(f'completed loading {video_path} with shape: {motions.shape}') 
         
         motions[:,:,2] *= -1 # Replace z-axis with -z-axis.
         motions_mean = np.mean(motions, axis=(0,1),keepdims=True)
         motions = scale*(motions - motions_mean) + motions_mean
         self.target_joints = motions
-        self.target_filepath = motion_path    
+        self.target_filepath = video_path    
 
     def retarget(self,lambda_temporal=0.1,max_epochs=2): 
         
@@ -574,23 +587,59 @@ class OSIMRetargetter:
 
     def save(self,save_path):
         # Save .mot file
-        
-        assert self.mot_data.shape[0] == self.T, "Invalid mot_data shape: {} != {}".format(self.mot_data.shape[0], self.T)
+        mot_data = self.osim.motion
 
-        dof_names =['time'] + [skeleton.getDofByIndex(i).getName() for i in range(skeleton.getNumDofs())]
-        headers = ["Coordinates","version=1",f"nRows={self.T}", f"nColumns={len(dof_names)}", 
-            "inDegrees=yes", # Not sure about this
-            "Units are S.I. units (second, meters, Newtons, ...)",
-            "If the header above contains a line with 'inDegrees', this indicates whether rotational values are in degrees (yes) or radians (no).",
-            "",
-            "endheader"
-            ]
+        assert mot_data.shape[0] == self.T, "Invalid mot_data shape: {} != {}".format(mot_data.shape[0], self.T)
+
+        timestamps = np.linspace(0, self.T/self.osim.fps, self.T)
+
+        # mot_data[:,2] += np.pi/2
+
+        # mot_data[:,3] %= 2*np.pi
+        # mot_data[:,6:] %= 2*np.pi
+
+        nimble.biomechanics.OpenSimParser.saveMot(self.osim.osim.skeleton, save_path.replace('.mot', '_radians.mot'), timestamps, mot_data.T)
+        save_path = os.path.abspath(save_path)
+
+        current_format = ["pelvis_tilt","pelvis_list","pelvis_rotation","pelvis_tx","pelvis_ty","pelvis_tz","hip_flexion_r","hip_adduction_r","hip_rotation_r","knee_angle_r","ankle_angle_r","subtalar_angle_r","mtp_angle_r","hip_flexion_l","hip_adduction_l","hip_rotation_l","knee_angle_l","ankle_angle_l","subtalar_angle_l","mtp_angle_l","lumbar_extension","lumbar_bending","lumbar_rotation","arm_flex_r","arm_add_r","arm_rot_r","elbow_flex_r","pro_sup_r","arm_flex_l","arm_add_l","arm_rot_l","elbow_flex_l","pro_sup_l"]
+        required_format = ["pelvis_tilt","pelvis_list","pelvis_rotation","pelvis_tx","pelvis_ty","pelvis_tz","hip_flexion_l","hip_adduction_l","hip_rotation_l","hip_flexion_r","hip_adduction_r","hip_rotation_r","knee_angle_l","knee_angle_r","ankle_angle_l","ankle_angle_r","subtalar_angle_l","subtalar_angle_r","mtp_angle_l","mtp_angle_r","lumbar_extension","lumbar_bending","lumbar_rotation","arm_flex_l","arm_add_l","arm_rot_l","arm_flex_r","arm_add_r","arm_rot_r","elbow_flex_l","elbow_flex_r","pro_sup_l","pro_sup_r"]
+
+        mapping_indices = [current_format.index(name) for name in required_format]
+
+        mot_data = mot_data[:,mapping_indices]
+
+
+        # mot_data[:,1] = 0 # Remove 
+
+        mot_data[:,:3] = np.rad2deg(mot_data[:,:3])
+        mot_data[:,6:] = np.rad2deg(mot_data[:,6:])
+
+        write_mot33_simulation(save_path.replace('.mot', '_degrees.mot'), mot_data)
+
+
+        ##### SOME ANGLES GREATER THAN 2PI #####
+        # mot = nimble.biomechanics.OpenSimParser.loadMot(self.osim.osim.skeleton, save_path)
+        # assert np.allclose(mot.poses, self.osim.motion.T), "Saved mot file does not match original mot data"
+
+
+
+
+        # dof_names =['time'] + [self.skeleton.getDofByIndex(i).getName() for i in range(self.skeleton.getNumDofs())]
+        # headers = ["Coordinates","version=1",f"nRows={self.T}", f"nColumns={len(dof_names)}", 
+        #     "inDegrees=yes", # Not sure about this
+        #     "Units are S.I. units (second, meters, Newtons, ...)",
+        #     "If the header above contains a line with 'inDegrees', this indicates whether rotational values are in degrees (yes) or radians (no).",
+        #     "",
+        #     "endheader"
+        #     ]
         
-        with open(save_path, 'w') as f:
-            f.write('\n'.join(headers))
-            f.write(' '.join(dof_names) + '\n')
-            for t in range(self.T):
-                f.write(' '.join([str(x) for x in mot_data[t]]) + '\n')      
+        # with open(save_path, 'w') as f:
+        #     f.write('\n'.join(headers))
+        #     f.write(' '.join(dof_names) + '\n')
+        #     for t in range(self.T):
+        #         f.write(' '.join([str(x) for x in mot_data[t]]) + '\n')
+        # 
+        #       
         
 
 
@@ -767,39 +816,59 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out-dir", type=str, default=None, help='Location where predictions are stored.')
-    parser.add_argument('--motion-list', default=None, nargs="+", type=str, help="motion name list")
-    parser.add_argument("--file", type=str, default=None, help='motion npy file')
-    parser.add_argument("--video_path", type=str, default=None, help='motion npy file')
+    parser.add_argument("--path", type=str, default="output-viz/MDM/results.npy", help='glob string to run on multiple files')
+    parser.add_argument("--type", type=str, default='mdm', help='t2m, mdm')
+    parser.add_argument("--out", type=str, default='output', help='t2m, mdm')
 
     args = parser.parse_args()
 
-    assert args.file is not None or args.motion_list is not None or args.out_dir is not None, "Please provide --file, --motion-list or --out-dir"
+    # assert args.file is not None or args.motion_list is not None or args.out_dir is not None, "Please provide --file, --motion-list or --out-dir"
+    save_dir = os.path.join(args.out, f"{args.type}_baseline")
 
-    osim_retargetter = OSIMRetargetter(exp_dir=os.path.dirname(os.path.dirname(os.path.dirname(args.file))))
+    mcs_sessions = ["349e4383-da38-4138-8371-9a5fed63a56a","015b7571-9f0b-4db4-a854-68e57640640d","c613945f-1570-4011-93a4-8c8c6408e2cf","dfda5c67-a512-4ca2-a4b3-6a7e22599732","7562e3c0-dea8-46f8-bc8b-ed9d0f002a77","275561c0-5d50-4675-9df1-733390cd572f","0e10a4e3-a93f-4b4d-9519-d9287d1d74eb","a5e5d4cd-524c-4905-af85-99678e1239c8","dd215900-9827-4ae6-a07d-543b8648b1da","3d1207bf-192b-486a-b509-d11ca90851d7","c28e768f-6e2b-4726-8919-c05b0af61e4a","fb6e8f87-a1cc-48b4-8217-4e8b160602bf","e6b10bbf-4e00-4ac0-aade-68bc1447de3e","d66330dc-7884-4915-9dbb-0520932294c4","0d9e84e9-57a4-4534-aee2-0d0e8d1e7c45","2345d831-6038-412e-84a9-971bc04da597","0a959024-3371-478a-96da-bf17b1da15a9","ef656fe8-27e7-428a-84a9-deb868da053d","c08f1d89-c843-4878-8406-b6f9798a558e","d2020b0e-6d41-4759-87f0-5c158f6ab86a","8dc21218-8338-4fd4-8164-f6f122dc33d9"]
 
-    if args.file is not None:
-        osim_retargetter.load_joints(args.file)
+    import glob 
+    glob_files = glob.glob(args.path)
 
-        osim_retargetter.retarget()
-        osim_retargetter.render()
-        osim_retargetter.save(save_path=args.file.replace('.npy', '.mot'))
 
-    elif args.motion_list is not None:
-        if args.out_dir is not None:
-            args.motion_list = [os.path.join(args.out_dir, x) for x in args.motion_list]    
-        
-        for filename in args.motion_list:
-            osim_retargetter.load_joints(filename)
+    while len(glob_files) < 60: 
+        glob_files += glob_files
+
+    print(f'Found {len(glob_files)} files')
+
+    motion_ind = 0
+    for file in glob_files:
+        if args.type == 't2m':
+            motions = np.load(file)
+            print(f'Ind:{motion_ind} Loaded {file} with shape: {motions.shape}')
+            # if motions.shape[0] == 1:
+                # motions = motions[0]
+            # num_joints = 22
+            # motions = recover_from_ric(torch.from_numpy(motions).float().cuda(), num_joints)
+            # motions = motions.detach().cpu().numpy()
+            
+        elif args.type == 'mdm':
+            motions = np.load(file,allow_pickle=True).item()['motion'].transpose(0,3,1,2)
+
+        else:  
+            raise ValueError(f'Invalid type: {args.type}')
+
+
+        for motion in motions:
+
+            subject_session = mcs_sessions[motion_ind//3]
+            save_path = os.path.join(save_dir, subject_session)
+            osim_retargetter = OSIMRetargetter(subject_session)
+
+
+            video_path = file.replace('.npy', f'_{motion_ind}.npy')
+            osim_retargetter.set_targe_joints(motion,video_path)
             osim_retargetter.retarget()
-            osim_retargetter.save(save_path=filename.replace('.npy', '.mot'))
+            
+            os.makedirs(save_path,exist_ok=True)
+            osim_retargetter.save(save_path=os.path.join(save_path, os.path.basename(file).replace('.npy', f'_{motion_ind}.mot')))
+            
+            # osim_retargetter.render()
 
-    elif args.out_dir is not None:
-        for filename in os.listdir(args.out_dir):
-            if filename.endswith('.npy'):
-                osim_retargetter.load_joints(os.path.join(args.out_dir, filename))
-                osim_retargetter.retarget()
-                osim_retargetter.save(save_path=os.path.join(args.out_dir, filename.replace('.npy', '.mot')))
-
-    verts, faces, markers, joints, joints_ori = osim_retargetter.fk()
-    print(verts.shape, faces.shape, markers.shape, joints.shape, joints_ori.shape)
+            
+            motion_ind += 1
