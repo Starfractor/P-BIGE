@@ -39,7 +39,8 @@ Proper movements enhance mobility, coordination, and muscle activation, which ar
 
 
 ## 1. Visual Results (More results can be found in our [project page](https://mael-zys.github.io/T2M-GPT/))
-![alt text](https://rose-stl-lab.github.io/UCSD-OpenCap-Fitness-Dataset/static/images/BIGE_Qualitative_Diagram_V4.jpeg){ height=960px }
+<img src="https://rose-stl-lab.github.io/UCSD-OpenCap-Fitness-Dataset/static/images/BIGE_Qualitative_Diagram_V4.jpeg" alt="alt text" style="max-height: 960px;">
+
 > Our guidance strategy leads to a more physiologically accurate squat motion as evidenced by the increased depth of the squat. The generated motion samples are ordered by the peak muscle activation. The red and green lines at 50% squat cycle represent the depth of the squat. 
 
 
