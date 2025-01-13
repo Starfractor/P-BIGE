@@ -15,7 +15,7 @@
 
 ## Summary
 
-Proper movements enhance mobility, coordination, and muscle activation, which are crucial for performance, injury prevention, and overall fitness. However, traditional simulation tools rely on strong modeling assumptions, are difficult to set up and computationally expensive. On the other hand, generative AI approaches provide efficient alternatives to motion generation. But they often lack physiological relevance and do not incorporate biomechanical constraints, limiting their practical applications in sports and exercise science. To address these limitations:
+Proper movements enhance mobility, coordination, and muscle activation, which are crucial for performance, injury prevention, and overall fitness. However, traditional simulation tools rely on strong modeling assumptions, are difficult to set up, and are computationally expensive. On the other hand, generative AI approaches provide efficient alternatives to motion generation. However they often lack physiological relevance and do not incorporate biomechanical constraints, limiting their practical applications in sports and exercise science. To address these limitations:
 
 - We propose a novel framework, BIGE, that combines bio-mechanically meaningful scoring metrics with generative modeling.
 - BIGE integrates a differentiable surrogate model for muscle activation to reverse optimize the latent space of the generative model.
@@ -38,10 +38,10 @@ Proper movements enhance mobility, coordination, and muscle activation, which ar
 
 
 
-## 1. Visual Results (More results can be found in our [project page](https://mael-zys.github.io/T2M-GPT/))
+## 1. Visual Results (More results can be found on our [project page](https://rose-stl-lab.github.io/UCSD-OpenCap-Fitness-Dataset))
 <img src="https://rose-stl-lab.github.io/UCSD-OpenCap-Fitness-Dataset/static/images/BIGE_Qualitative_Diagram_V4.jpeg" alt="alt text" style="max-height: 960px;">
 
-> Our guidance strategy leads to a more physiologically accurate squat motion as evidenced by the increased depth of the squat. The generated motion samples are ordered by the peak muscle activation. The red and green lines at 50% squat cycle represent the depth of the squat. 
+> Our guidance strategy leads to a more physiologically accurate squat motion as evidenced by the increased squat depth. The generated motion samples are ordered by the peak muscle activation. The red and green lines at 50% squat cycle represent the depth of the squat. 
 
 
 <video controls style="max-height: 960px;">
@@ -56,7 +56,7 @@ Proper movements enhance mobility, coordination, and muscle activation, which ar
 ### 2.1. Environment
 
 
-Our model can be learnt in a **single GPU V100-32G**
+Our model can be learned in a **single GPU V100-32G**
 
 ```bash
 conda env create -f environment.yml
@@ -247,7 +247,7 @@ python src/plot_3.py  MCS_DATA/Data/<subject-path>/OpenSimData/Dynamics/SQT01_se
 
 
 
-### 9. Acknowledgement
+### 9. Acknowledgment
 
 We extend our gratitude to The Wu Tsai Human Performance Alliance for their invaluable support and resources. Their dedication to advancing human performance through interdisciplinary research has been instrumental to our project.
 
