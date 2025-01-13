@@ -172,13 +172,77 @@ for session in mcs_sessions:
     ```
 
 ## 8. Rendering
+
+To render videos and images, install the [UCSD-OpenCap-Fitness-Dataset](https://rose-stl-lab.github.io/UCSD-OpenCap-Fitness-Dataset/ucsd-opencap-dataset.html)  
+
+### Installation 
+
+```
+git clone 
+```
+
+
 Generate MP4 videos from MOT files.
 ```bash
 cd UCSD-OpenCap-Fitness_Dataset/
 export DISPLAY=:99.0
-python src/opencap_reconstruction_render.py <absolute subject-path> <absolute mot-path> <absolute save-path>
 ```
 
+
+### Compare MoCap and generated sample
+
+```
+python src/opencap_reconstruction_render.py <absolute subject-path> <absolute mot-path> <absolute save-path> # Compare 
+```
+
+
+### Compare 3 .mot files 
+
+```
+python src/plot_3.py <mot-path-1> <mot-path-2> <mot-path-3> <optonal-video-path>
+```
+
+<details><summary>Examples: </summary>   
+- BIGE
+```
+python src/plot_3.py  MCS_DATA/LIMO/FinalFinalHigh/mot_visualization/latents_subject_run_d66330dc-7884-4915-9dbb-0520932294c4/entry_{0,2,19}_FinalFinalHigh.mot render/bige_3.mp4
+```
+
+- MDM  
+```
+python src/plot_3.py  MCS_DATA/mdm_baseline/015b7571-9f0b-4db4-a854-68e57640640d/results_*_radians.mot
+```
+
+
+- T2M
+```
+python src/plot_3.py  MCS_DATA/mdm_baseline/015b7571-9f0b-4db4-a854-68e57640640d/results_*_radians.mot
+```
+
+
+- Simulation 
+```
+ python src/plot_3.py  MCS_DATA/Data/c613945f-1570-4011-93a4-8c8c6408e2cf/OpenSimData/Dynamics/SQT01_segment_?/kinematics_activations_SQT01_segment_?_muscle_driven.mot
+```
+
+
+- For MoCap data collected using opencap
+```
+ python src/plot_3.py MCS_DATA/Data/fb6e8f87-a1cc-48b4-8217-4e8b160602bf/MarkerData/SQT01.trc
+```
+
+
+- For Simulation data
+```
+python src/plot_3.py  MCS_DATA/Data/<subject-path>/OpenSimData/Dynamics/SQT01_segment_?/kinematics_activations_SQT01_segment_?_muscle_driven.mot 
+
+```
+
+- OpenCap Dataset 
+
+
+
+</details>
 
 
 
