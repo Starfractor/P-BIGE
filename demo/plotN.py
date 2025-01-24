@@ -5,23 +5,39 @@ import numpy as np
 from tqdm import tqdm
 import polyscope as ps 
 import polyscope.imgui as psim
+import matplotlib.pyplot as plt
 
 
 file_path = os.path.abspath(__file__)
 dir_path = os.path.dirname(file_path)
-sys.path.append(os.path.join(dir_path,'..', '..', 'UCSD-OpenCap-Fitness-Dataset' , 'src'))
-
+UCSD_OpenCap_Fitness_Dataset_path = os.path.join(dir_path,'..', '..', 'UCSD-OpenCap-Fitness-Dataset' , 'src')
+UCSD_OpenCap_Fitness_Dataset_path = os.path.abspath(UCSD_OpenCap_Fitness_Dataset_path)
+sys.path.append(UCSD_OpenCap_Fitness_Dataset_path)
+print(UCSD_OpenCap_Fitness_Dataset_path)
 
 
 
 from utils import * 
 from dataloader import OpenCapDataLoader,MultiviewRGB
 from smpl_loader import SMPLRetarget
+
 # from osim import OSIMSequence
 # Load LaiArnoldModified2017
 from osim import OSIMSequence
 
 from scipy.spatial.transform import Rotation as sRotation
+from scipy.interpolate import CubicSpline
+
+def time_normalization(time_series,duration=101): 
+
+	orig_time_space = np.linspace(0,1,len(time_series))
+		
+	spline = CubicSpline(orig_time_space, time_series)
+
+	spline_input = np.linspace(0,1,duration)
+	split_output = spline(spline_input)
+			
+	return split_output
 
 class Visualizer: 
 	def __init__(self): 
@@ -49,6 +65,55 @@ class Visualizer:
 		
 		return self.display_size
 
+	def get_reds_color(self,vals,min_val=0,max_val=1):
+
+		vals = vals.astype(np.float32)
+		vals = (vals -min_val)/(max_val - min_val) # Normalize 
+
+		colors = plt.get_cmap('viridis')(vals)
+
+		return colors[...,:3]
+
+	@staticmethod
+	def load_mot(file): 
+		with open(file,'r') as f:
+			file_data = f.read().split('\n')
+			# print(file_data)
+			data = {'info':'', 'poses': []}
+			read_header = False
+			read_rows = 0
+			
+			for line in file_data:
+				line = line.strip()
+				if len(line) == 0:
+					continue
+				
+				if not read_header:
+					if line == 'endheader':
+						read_header = True
+						continue
+					if '=' not in line:
+						data['info'] += line + '\n'
+					else:
+						k,v = line.split('=')
+						if v.isnumeric():
+							data[k] = int(v)
+						else:
+							data[k] = v
+				else:
+					rows = line.split()
+					if read_rows == 0:
+						data['headers'] = rows
+					else:
+						rows = [float(row) for row in rows]
+						data['poses'].append(rows)
+
+					read_rows += 1
+			data['headers'] = data['headers'][-80:]
+			data['activations'] = np.array(data['poses'])[:,-80:] # Change to remove time 
+			# data['poses'] = np.array(data['poses'])[:,1:34] # Change to remove time 
+			return data
+
 
 
 	def callback(self):
@@ -66,7 +131,22 @@ class Visualizer:
 			T = self.ps_data['biomechanical'][i].shape[0]
 			self.ps_data['ps_biomechanical_list'][i].update_vertex_positions(self.ps_data['biomechanical'][i][self.ps_data['t']  %  T ])
 			self.ps_data['ps_biomechanical_joints_list'][i].update_point_positions(self.ps_data['biomechanical_joints'][i][self.ps_data['t']  %  T ])
-		
+
+			if "Dynamics" in self.samples[i].mot_path:
+				activation = Visualizer.load_mot(self.samples[i].mot_path)
+				activation_muscle_name = [ x.replace('/activation', '') for x in activation['headers']]
+
+				activations = time_normalization(activation['activations'],duration=196)
+				activation_color = self.get_reds_color(activations)
+				activation_color = dict([ (activation_muscle_name[j],activation_color[:,j,:3]) for j,muscle in enumerate(activation_muscle_name)])
+			else:
+				activation_color = dict([ (muscle,np.tile((np.array([255,0,0])/255).reshape(1,3),(T,1))) for muscle in self.ps_data['muscles'][i]])
+       
+			for j,muscle in enumerate(self.ps_data['muscles'][i]):
+				# self.ps_data['ps_muscles_dict'][i][muscle].update_node_positions(self.ps_data['muscles'][i][muscle][self.ps_data['t']  %  T ])
+				edges = np.array([ [i,i+1] for i in range(self.ps_data['muscles'][i][muscle].shape[1]-1)])
+				ps_muscle = ps.register_curve_network(f"{muscle}-{i}",self.ps_data['muscles'][i][muscle][t],edges,color=activation_color[muscle][t])
+				ps_muscle.add_to_group(self.ps_data[f'ps_muscles'][i])
 		if not self.ps_data['is_paused']: 
 			self.ps_data['t'] += 1 
 
@@ -158,11 +238,11 @@ class Visualizer:
 				sample_path = os.path.join(INPUT_DIR,f"OpenCapData_{self.ps_data['session_options_selected']}")
 				sample_path = os.path.join(sample_path, "MarkerData")
 				sample_path = os.path.join(sample_path,f"{self.ps_data['category_options_selected']}{self.ps_data['trial_options_selected']}.trc")
-				sample = load_subject(sample_path)
+				# sample = load_subject(sample_path)
 
 				retrieval_path = os.path.join(self.ps_data['retrieval_dir'], self.ps_data['retrieval_options_selected'])
-				sample = load_retrived_samples(sample,retrieval_path)
-				self.update_smpl_multi_view_callback(sample)
+				self.samples[-1] = load_retrived_samples(self.samples[-1],retrieval_path)
+				self.update_smpl_multi_view_callback(self.samples)
 			psim.TreePop()
 
 
@@ -171,7 +251,11 @@ class Visualizer:
 	
 	def update_smpl_multi_view_callback(self,samples,video_name=None):
 
-
+		# For each sample
+			# 1. Initialize ps_data to store all objects to render 
+			# 2. Set camera  
+			# 3. Shift on X-axis to render multiple views 
+		
 
 		for sample_ind, sample in enumerate(samples):
 			assert hasattr(sample,'rgb'), "Error loading RGB Data. Don't know the camera details. Cannot render in multiple views"
@@ -182,6 +266,7 @@ class Visualizer:
 			if not hasattr(self,'ps_data')	:
 				
 				ps.init()
+				ps.remove_all_structures()
 				self.ps_data = {}
 				self.ps_data['T'] = 196
 				target = sample.joints_np
@@ -191,18 +276,32 @@ class Visualizer:
 
 				self.ps_data['ps_biomechanical_list'] = []
 				self.ps_data['ps_biomechanical_joints_list'] = []
+				self.ps_data['ps_muscles'] = []
+				self.ps_data['ps_muscles_dict'] = []
+				
 				self.ps_data['biomechanical'] = []
 				self.ps_data['biomechanical_joints'] = []
+				self.ps_data['muscles'] = []
+				
 				self.ps_data['com_curve'] = []
 
-
-
-				ps.remove_all_structures()
-				# camera_position = np.array([0,0,3*self.ps_data['bbox'][0]])
-				# camera_position = np.array([7*self.ps_data['bbox'][0],0.0*self.ps_data['bbox'][1],0]) + self.ps_data['object_position']
-				camera_position = np.array([0,-0.5*self.ps_data['bbox'][1],-7*self.ps_data['bbox'][0]]) + self.ps_data['object_position']
-				look_at_position = np.array([0,-0.5*self.ps_data['bbox'][1],0]) + self.ps_data['object_position']
+				# camera_shift_x = 0
+				camera_shift_x = len(samples)//8
+				camera_shift_x = self.ps_data['bbox'][0]*camera_shift_x
+				print("Camera shift x",camera_shift_x)
+				camera_position = np.array([camera_shift_x,-0.5*self.ps_data['bbox'][1],-5*self.ps_data['bbox'][0]]) + self.ps_data['object_position']
+				look_at_position = np.array([camera_shift_x,-0.5*self.ps_data['bbox'][1],0]) + self.ps_data['object_position']
+				print(camera_position,look_at_position)
 				ps.look_at(camera_position,look_at_position)
+
+
+			shift_x = sample_ind - len(samples)//2
+			shift_x = -self.ps_data['bbox'][0]*shift_x*4
+			print("Shift x:",shift_x)
+			# shift_x = -1.5*shift_x
+
+
+
 
 
 			if not hasattr(self,'ps_data') or 'ps_cams' not in self.ps_data:
@@ -232,16 +331,17 @@ class Visualizer:
 
 
 			
-			shift_x = sample_ind - len(samples)//2
-			shift_x = -self.ps_data['bbox'][0]*shift_x*4
-			# shift_x = -1.5*shift_x
+
 
 			biomechanical = sample.osim.vertices + np.array([shift_x,0,0.0])*self.ps_data['bbox']
 			biomechanical_joints = sample.osim.joints + np.array([shift_x,0,0.0])*self.ps_data['bbox']
 
+			muscle_dict = {}
+			for muscle_name in sample.osim.muscle_trajectory:        
+				muscle_dict[muscle_name] = sample.osim.muscle_trajectory[muscle_name] + np.array([shift_x,0,0.0])*self.ps_data['bbox']
 
 
-			print("Shift x:",shift_x)
+
 
 			rot_x = 0 
 			rot_y = 90 if "t2m" in sample.osim_file or "mdm" in sample.osim_file else 0 
@@ -252,25 +352,39 @@ class Visualizer:
 
 			biomechanical = (biomechanical  - biomechanical.mean((0,1),keepdims=True))@R.T + biomechanical.mean((0,1),keepdims=True) 
 			biomechanical_joints = (biomechanical_joints  - biomechanical_joints.mean((0,1),keepdims=True) )@R.T + biomechanical_joints.mean((0,1),keepdims=True)
-
+			for muscle_name in sample.osim.muscle_trajectory:        
+				muscle_dict[muscle_name] = (muscle_dict[muscle_name] - muscle_dict[muscle_name].mean((0,1),keepdims=True))@R.T + muscle_dict[muscle_name].mean((0,1),keepdims=True)
 
 			self.ps_data['biomechanical'].append(biomechanical)
 			self.ps_data['biomechanical_joints'].append(biomechanical_joints)
+			self.ps_data['muscles'].append(muscle_dict)
 
 
 
 
 			name = os.path.basename(sample.osim_file).split('.')[0]
-			ps_biomechanical = ps.register_surface_mesh(f"{sample_ind}-{name} mesh",biomechanical[0],sample.osim.faces,transparency=0.5,color=np.array([127,127,255])/255,smooth_shade=True,material='wax')
+			# ps_biomechanical = ps.register_surface_mesh(f"{sample_ind}-{name} mesh",biomechanical[0],sample.osim.faces,transparency=0.5,color=np.array([127,127,255])/255,smooth_shade=True,material='wax')
+			ps_biomechanical = ps.register_surface_mesh(f"{sample_ind}-{name} mesh",biomechanical[0],sample.osim.faces,transparency=0.5,color=np.array([255,255,255])/255,smooth_shade=True,material='wax')
 			ps_biomechanical_joints = ps.register_point_cloud(f"{sample_ind}-{name} joints",biomechanical_joints[0],color=np.array([0,0,0]))
 
 			edges = np.array([ [i,i+1] for i in range(biomechanical_joints.shape[0]-1)] + [[biomechanical_joints.shape[0]-1,0]]) 
 
 			ps_com_curve = ps.register_curve_network(f"{sample_ind}-{name} com",biomechanical_joints[:,[1,6]].mean(axis=1),edges,color=np.array([255,255,0])/255)
 
+			ps_muscles = ps.create_group(f"Muscles-{sample_ind}")
+			ps_muscles_dict = {}
+			for muscle in muscle_dict: 
+				edges = np.array([ [i,i+1] for i in range(muscle_dict[muscle].shape[1]-1)])
+				ps_muscle = ps.register_curve_network(f"{muscle}-{sample_ind}",muscle_dict[muscle][0],edges,color=np.array([255,0,0])/255)
+				ps_muscle.add_to_group(ps_muscles)			
+				ps_muscles_dict[muscle] = ps_muscle 
+			ps_muscles.set_enabled(False)
+	
+
 			self.ps_data['ps_biomechanical_list'].append(ps_biomechanical)
 			self.ps_data['ps_biomechanical_joints_list'].append(ps_biomechanical_joints)	
-
+			self.ps_data['ps_muscles'].append(ps_muscles)
+			self.ps_data['ps_muscles_dict'].append(ps_muscles_dict)
 
 			# Find the timestep with knee flexion and set it as the initial timestep
 			deepest_squat_index = biomechanical_joints[:,0,1].argmin()
@@ -310,6 +424,14 @@ class Visualizer:
 			self.ps_data['retrieval_dir'] = os.path.dirname(sample.osim_file)
 			self.ps_data['retrieval_options'] = os.listdir(self.ps_data['retrieval_dir'])  
 		
+
+
+		# Set camera
+
+		# camera_position = np.array([0,0,3*self.ps_data['bbox'][0]])
+		# camera_position = np.array([7*self.ps_data['bbox'][0],0.0*self.ps_data['bbox'][1],0]) + self.ps_data['object_position']
+
+
 
 		# Take a screenshot of the initial setup 
 		# ps.show()
@@ -393,6 +515,7 @@ class Visualizer:
 
 	# Initialize 3D objects from a sample and set callback for
 	def render_smpl_multi_view_callback(self,samples,video_name=None):
+		self.samples = samples
 		self.update_smpl_multi_view_callback(samples,video_name=video_name)
 		# ps.show()
 		ps.set_user_callback(self.callback)
@@ -486,14 +609,18 @@ def load_retrived_samples(session, retrieval_path):
 
 	mot_path = os.path.abspath(retrieval_path)
 	print("Loading Generatrion file:",mot_path)
-
+	
 
 	trc_path = os.path.join(DATA_DIR,"Data", session, "MarkerData")
 	trc_file = [os.path.join(trc_path,x) for x in os.listdir(trc_path) if  'sqt' in x.lower()  and x.endswith('.trc')  ][0]
 	sample = OpenCapDataLoader(trc_file)
 	
+	sample.mot_path = mot_path	
+ 
 	# Load Video
 	sample.rgb = MultiviewRGB(sample)
+
+	
 
 
 	osim_path = os.path.join(DATA_DIR,"Data", session, "OpenSimData","Model","LaiArnoldModified2017_poly_withArms_weldHand_scaled.osim") 
