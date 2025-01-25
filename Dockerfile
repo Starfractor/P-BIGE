@@ -18,6 +18,14 @@ RUN MINICONDA_INSTALLER_SCRIPT=Miniconda3-py38_23.1.0-1-Linux-x86_64.sh && \
 # Update PATH to include conda
 ENV PATH=/usr/local/bin:$PATH
 
+
+
+# Clone UCSD-Github dataset 
+# Set the working directory
+WORKDIR /
+RUN git -c http.sslVerify=false clone https://github.com/Rose-STL-Lab/UCSD-OpenCap-Fitness-Dataset.git
+
+
 # Clone the digital-coach-anwesh repository
 RUN git -c http.sslVerify=false clone https://gitlab.nrp-nautilus.io/shmaheshwari/digital-coach-anwesh.git .
 
