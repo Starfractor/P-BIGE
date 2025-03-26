@@ -10,7 +10,7 @@
 
 ![Teaser figure](img/BIGE-Diff-Subs.gif)
 
-> Generations from BIGE for subjects with anthropometrics for different muscle activations.
+> BIGE can generate motions with varying muscle activations for subjects with different anthropometrics. 
 
 
 ## Summary
